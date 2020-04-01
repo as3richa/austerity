@@ -14,13 +14,12 @@ extern "C" {
 
 typedef struct austerity_graph_builder austerity_graph_builder_t;
 
-austerity_graph_builder_t *austerity_create_graph_builder(void);
+austerity_graph_builder_t *austerity_create_graph_builder(int panicky);
 
-austerity_graph_builder_t *austerity_create_graph_builder_a(void *user,
+austerity_graph_builder_t *austerity_create_graph_builder_a(int panicky,
                                                             void *(*alloc)(size_t, void *),
-                                                            void (*free)(void *, void *));
-
-austerity_graph_builder_t *austerity_create_graph_builder_p(void);
+                                                            void (*free)(void *, void *),
+                                                            void *user);
 
 void austerity_destroy_graph_builder(austerity_graph_builder_t *g);
 
@@ -29,7 +28,9 @@ void austerity_destroy_graph_builder(austerity_graph_builder_t *g);
 // ============================================================================
 
 typedef uint_least32_t austerity_source_t;
+
 #define AUSTERITY_DEV_NULL (austerity_source_t)0xfffffffful
+#define AUSTERITY_MAX_SOURCES (AUSTERITY_DEV_NULL - 1)
 
 austerity_source_t austerity_fd_source(austerity_graph_builder_t *g, int fd);
 
@@ -39,13 +40,13 @@ austerity_source_t austerity_stdio_source(austerity_graph_builder_t *g, FILE *fi
 
 austerity_source_t austerity_str_source(austerity_graph_builder_t *g, const char *str);
 
-austerity_source_t
-austerity_buffer_source(austerity_graph_builder_t *g, size_t size, const char *data);
+austerity_source_t austerity_static_str_source(austerity_graph_builder_t *g, const char *str);
 
 austerity_source_t
-austerity_static_buffer_source(austerity_graph_builder_t *g, size_t size, const char *data);
+austerity_buffer_source(austerity_graph_builder_t *g, const char *data, size_t size);
 
-austerity_source_t austerity_io_param_source(austerity_graph_builder_t *g, size_t index);
+austerity_source_t
+austerity_static_buffer_source(austerity_graph_builder_t *g, const char *data, size_t size);
 
 // ============================================================================
 // Sinks
@@ -60,8 +61,6 @@ int austerity_file_sink(austerity_graph_builder_t *g,
 
 int austerity_stdio_sink(austerity_graph_builder_t *g, FILE *file, austerity_source_t source);
 
-int austerity_io_param_sink(austerity_graph_builder_t *g, size_t index, austerity_source_t source);
-
 // ============================================================================
 // Environments
 // ============================================================================
@@ -70,11 +69,11 @@ typedef struct austerity_environment austerity_environment_t;
 
 austerity_environment_t *austerity_create_environment(austerity_graph_builder_t *g);
 
-void austerity_environment_setwd(austerity_environment_t *env, const char *path);
+int austerity_environment_setwd(austerity_environment_t *env, const char *path);
 
-void austerity_environment_keepenv(austerity_environment_t *env);
+int austerity_environment_keepenv(austerity_environment_t *env);
 
-void austerity_environment_clearenv(austerity_environment_t *env);
+int austerity_environment_clearenv(austerity_environment_t *env);
 
 int austerity_environment_setenv(austerity_environment_t *env,
                                  const char *name,
@@ -83,11 +82,11 @@ int austerity_environment_setenv(austerity_environment_t *env,
 
 int austerity_environment_unsetenv(austerity_environment_t *env, const char *name);
 
-void austerity_environment_setreuid(austerity_environment_t *env, uid_t ruid, uid_t euid);
+int austerity_environment_setreuid(austerity_environment_t *env, uid_t ruid, uid_t euid);
 
-void austerity_environment_setregid(austerity_environment_t *env, gid_t rgid, gid_t egid);
+int austerity_environment_setregid(austerity_environment_t *env, gid_t rgid, gid_t egid);
 
-void austerity_set_default_environment(austerity_graph_builder_t *g, austerity_environment_t *env);
+int austerity_set_default_environment(austerity_graph_builder_t *g, austerity_environment_t *env);
 
 // ============================================================================
 // Commands
@@ -102,16 +101,10 @@ int austerity_command_push_arg_str(austerity_command_builder_t *cmd, const char 
 
 int austerity_command_push_arg_source(austerity_command_builder_t *cmd, austerity_source_t arg);
 
-int austerity_command_push_arg_str_param(austerity_command_builder_t *cmd,
-                                         size_t index,
-                                         const char *dfault);
+int austerity_command_set_environment(austerity_command_builder_t *cmd,
+                                      austerity_environment_t *env);
 
-int austerity_command_push_arg_io_param(austerity_command_builder_t *cmd, size_t index);
-
-void austerity_command_set_environment(austerity_command_builder_t *cmd,
-                                       austerity_environment_t *env);
-
-void austerity_command_set_argv0(austerity_command_builder_t *cmd);
+int austerity_command_set_argv0(austerity_command_builder_t *cmd, const char *argv0);
 
 typedef struct austerity_command_result {
   austerity_source_t stdout;
@@ -137,7 +130,6 @@ typedef int (*austerity_function_t)(
     size_t n_in, austerity_fn_io_t *in, size_t n_out, austerity_fn_io_t *out, void *user);
 
 austerity_function_builder_t *austerity_create_function_builder(austerity_graph_builder_t *g,
-                                                                size_t n_in,
                                                                 size_t n_out,
                                                                 austerity_function_t func);
 
@@ -146,21 +138,15 @@ void austerity_function_set_user_data(austerity_function_builder_t *fn, void *us
 void austerity_function_set_environment(austerity_function_builder_t *fn,
                                         austerity_environment_t *env);
 
-int austerity_function_needs_path_in(austerity_function_builder_t *fn, size_t index);
-
-int austerity_function_needs_path_in_m(austerity_function_builder_t *fn, size_t mask);
-
-int austerity_function_needs_path_out(austerity_function_builder_t *fn, size_t index);
-
-int austerity_function_needs_path_out_m(austerity_function_builder_t *fn, size_t mask);
+int austerity_function_needs_path(austerity_function_builder_t *fn,
+                                  size_t in_mask,
+                                  size_t out_mask);
 
 austerity_source_t *
 austerity_function(austerity_graph_builder_t *g, austerity_function_builder_t *fn, ...);
 
 #ifdef AUSTERITY_ABBREV
-
-// FIXME
-
+#include "austerity-abbrev.h"
 #endif
 
 #ifdef __cplusplus
