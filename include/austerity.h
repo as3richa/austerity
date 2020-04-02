@@ -40,7 +40,8 @@ void austerity_destroy_graph_builder(austerity_graph_builder_t *g);
 
 typedef uint_least32_t austerity_source_t;
 
-#define AUSTERITY_DEV_NULL (austerity_source_t)0xfffffffful
+#define AUSTERITY_NIL_SOURCE (austerity_source_t)0xfffffffful
+#define AUSTERITY_DEV_NULL (AUSTERITY_NIL_SOURCE - 1)
 #define AUSTERITY_MAX_SOURCES (AUSTERITY_DEV_NULL - 1)
 
 austerity_source_t austerity_fd_source(austerity_graph_builder_t *g, int fd);

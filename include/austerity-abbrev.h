@@ -17,7 +17,6 @@
 #define create_graph_builder austerity_create_graph_builder
 #define create_graph_builder_a austerity_create_graph_builder_a
 #define destroy_graph_builder austerity_destroy_graph_builder
-#define DEV_NULL AUSTERITY_DEV_NULL
 #define environment austerity_environment
 #define environment_clearenv austerity_environment_clearenv
 #define environment_keepenv austerity_environment_keepenv
@@ -54,5 +53,7 @@
 #define graph_builder_abort_on_error austerity_graph_builder_abort_on_error
 #define graph_builder_abort_on_error_c austerity_graph_builder_abort_on_error_c
 #define error_t austerity_error_t
+#define DEV_NULL AUSTERITY_DEV_NULL
+#define NIL_SOURCE AUSTERITY_NIL_SOURCE
 
 #endif

@@ -133,6 +133,10 @@ push_error(graph_builder_t *g, const char *function_name, int errnum, const char
   error_t *error = &g->error;
 
   if (error->errnum == 0) {
+    if (errnum == 0) {
+      errnum = -1;
+    }
+
     *error = (error_t){function_name, errnum, english};
   }
 
@@ -184,7 +188,7 @@ push_transformer(source_t *first, graph_builder_t *g, size_t n_out, const char *
 
   const source_t sources = create_sources(g, tx->size, n_out);
 
-  if (sources == DEV_NULL) {
+  if (sources == NIL_SOURCE) {
     push_alloc_error(g, api_fn_name);
     return NULL;
   }
@@ -204,7 +208,7 @@ static source_t create_sources(graph_builder_t *g, size_t tf_index, size_t n) {
     source_data_t *ary = ALLOC_N(source_data_t, capacity, g);
 
     if (ary == NULL) {
-      return DEV_NULL;
+      return NIL_SOURCE;
     }
 
     memcpy(ary, sx->ary, sizeof(source_data_t) * sx->capacity);
@@ -311,14 +315,14 @@ void destroy_graph_builder(graph_builder_t *g) {
 source_t fd_source(graph_builder_t *g, int fd) {
   if (fd < 0) {
     push_inval_error(g, __func__, "fd is negative");
-    return DEV_NULL;
+    return NIL_SOURCE;
   }
 
   source_t out;
   transformer_t *t = push_transformer(&out, g, 1, __func__);
 
   if (t == NULL) {
-    return DEV_NULL;
+    return NIL_SOURCE;
   }
 
   t->type = TT_FD_SOURCE;
@@ -330,13 +334,13 @@ source_t fd_source(graph_builder_t *g, int fd) {
 source_t file_source(graph_builder_t *g, const char *path, int flags) {
   if (path == NULL) {
     push_inval_error(g, __func__, "path is NULL");
-    return DEV_NULL;
+    return NIL_SOURCE;
   }
 
   const char *my_path = copy_str(g, path, __func__);
 
   if (my_path == NULL) {
-    return DEV_NULL;
+    return NIL_SOURCE;
   }
 
   source_t out;
@@ -352,7 +356,7 @@ source_t file_source(graph_builder_t *g, const char *path, int flags) {
 source_t stdio_source(graph_builder_t *g, FILE *file) {
   if (file == NULL) {
     push_inval_error(g, __func__, "file is NULL");
-    return DEV_NULL;
+    return NIL_SOURCE;
   }
 
   source_t out;
@@ -367,21 +371,21 @@ source_t stdio_source(graph_builder_t *g, FILE *file) {
 source_t str_source(graph_builder_t *g, const char *str) {
   if (str == NULL) {
     push_inval_error(g, __func__, "str is NULL");
-    return DEV_NULL;
+    return NIL_SOURCE;
   }
 
   const size_t size = strlen(str);
   char *my_str = copy_buffer(g, str, size, __func__);
 
   if (my_str == NULL) {
-    return DEV_NULL;
+    return NIL_SOURCE;
   }
 
   source_t out;
   transformer_t *t = push_transformer(&out, g, 1, __func__);
 
   if (t == NULL) {
-    return DEV_NULL;
+    return NIL_SOURCE;
   }
 
   t->type = TT_STR_SOURCE;
@@ -394,20 +398,20 @@ source_t str_source(graph_builder_t *g, const char *str) {
 source_t buffer_source(graph_builder_t *g, const char *data, size_t size) {
   if (data == NULL) {
     push_inval_error(g, __func__, "data is NULL");
-    return DEV_NULL;
+    return NIL_SOURCE;
   }
 
   char *my_data = copy_buffer(g, data, size, __func__);
 
   if (my_data == NULL) {
-    return DEV_NULL;
+    return NIL_SOURCE;
   }
 
   source_t out;
   transformer_t *t = push_transformer(&out, g, 1, __func__);
 
   if (t == NULL) {
-    return DEV_NULL;
+    return NIL_SOURCE;
   }
 
   t->type = TT_BUFFER_SOURCE;
@@ -420,14 +424,14 @@ source_t buffer_source(graph_builder_t *g, const char *data, size_t size) {
 source_t static_str_source(graph_builder_t *g, const char *str) {
   if (str == NULL) {
     push_inval_error(g, __func__, "str is NULL");
-    return DEV_NULL;
+    return NIL_SOURCE;
   }
 
   source_t out;
   transformer_t *t = push_transformer(&out, g, 1, __func__);
 
   if (t == NULL) {
-    return DEV_NULL;
+    return NIL_SOURCE;
   }
 
   t->type = TT_STATIC_STR_SOURCE;
@@ -440,14 +444,14 @@ source_t static_str_source(graph_builder_t *g, const char *str) {
 source_t static_buffer_source(graph_builder_t *g, const char *data, size_t size) {
   if (data == NULL) {
     push_inval_error(g, __func__, "data is NULL");
-    return DEV_NULL;
+    return NIL_SOURCE;
   }
 
   source_t out;
   transformer_t *t = push_transformer(&out, g, 1, __func__);
 
   if (t == NULL) {
-    return DEV_NULL;
+    return NIL_SOURCE;
   }
 
   t->type = TT_STATIC_BUFFER_SOURCE;
