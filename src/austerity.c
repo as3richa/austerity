@@ -152,7 +152,7 @@ static void push_inval_error(graph_builder_t *g, const char *function_name, cons
 }
 
 static void push_alloc_error(graph_builder_t *g, const char *function_name) {
-  push_error(g, function_name, ENOMEM, "cannot allocate memory");
+  push_error(g, function_name, errno, "cannot allocate memory");
 }
 
 static source_t create_sources(graph_builder_t *g, size_t tf_index, size_t n);
