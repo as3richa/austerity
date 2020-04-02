@@ -63,7 +63,7 @@ typedef struct {
   st_size_t tf_index;
   st_size_t out_index;
   st_size_t degree;
-  unsigned int pathy : 1;
+  unsigned int needs_path;
 } source_data_t;
 
 struct austerity_command_builder {
@@ -74,7 +74,7 @@ struct austerity_function_builder {
 };
 
 struct austerity_graph_builder {
-  unsigned int panicky : 1;
+  unsigned int abort_on_error : 1;
 
   struct {
     transformer_t *ary;
@@ -112,7 +112,7 @@ struct austerity_graph_builder {
 #define CHECK_ALLOC(ptr, g, r)                                                                     \
   do {                                                                                             \
     if ((ptr) == NULL) {                                                                           \
-      if ((g)->panicky) {                                                                          \
+      if ((g)->abort_on_error) {                                                                          \
         abort(); /* FIXME: error message(?) */                                                     \
       }                                                                                            \
       return (r);                                                                                  \
@@ -183,7 +183,7 @@ static source_t create_sources(graph_builder_t *g, size_t tf_index, size_t n) {
     data->tf_index = tf_index;
     data->out_index = i;
     data->degree = 0;
-    data->pathy = 0;
+    data->needs_path = 0;
   }
 
   const size_t result = g->source_data.size;
@@ -218,7 +218,7 @@ create_graph_builder_a(void *(*alloc)(size_t, void *), void (*free)(void *, void
     return NULL;
   }
 
-  g->panicky = 0;
+  g->abort_on_error = 0;
 
   g->source_data.ary = NULL;
   g->source_data.size = 0;
@@ -240,7 +240,7 @@ create_graph_builder_a(void *(*alloc)(size_t, void *), void (*free)(void *, void
 }
 
 void graph_builder_abort_on_error(graph_builder_t *g) {
-  g->panicky = 1;
+  g->abort_on_error = 1;
 }
 
 void destroy_graph_builder(graph_builder_t *g) {
