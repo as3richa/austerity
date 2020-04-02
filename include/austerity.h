@@ -14,12 +14,13 @@ extern "C" {
 
 typedef struct austerity_graph_builder austerity_graph_builder_t;
 
-austerity_graph_builder_t *austerity_create_graph_builder(int panicky);
+austerity_graph_builder_t *austerity_create_graph_builder(void);
 
-austerity_graph_builder_t *austerity_create_graph_builder_a(int panicky,
-                                                            void *(*alloc)(size_t, void *),
+austerity_graph_builder_t *austerity_create_graph_builder_a(void *(*alloc)(size_t, void *),
                                                             void (*free)(void *, void *),
                                                             void *user);
+
+void austerity_graph_builder_abort_on_error(austerity_graph_builder_t *g);
 
 void austerity_destroy_graph_builder(austerity_graph_builder_t *g);
 

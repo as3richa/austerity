@@ -206,21 +206,19 @@ static char *copy_str(const char *str, graph_builder_t *g) {
   return copy_buffer(str, strlen(str) + 1, g);
 }
 
-graph_builder_t *create_graph_builder(int panicky) {
-  return create_graph_builder_a(panicky, default_alloc, default_free, NULL);
+graph_builder_t *create_graph_builder(void) {
+  return create_graph_builder_a(default_alloc, default_free, NULL);
 }
 
-graph_builder_t *create_graph_builder_a(int panicky,
-                                        void *(*alloc)(size_t, void *),
-                                        void (*free)(void *, void *),
-                                        void *user) {
+graph_builder_t *
+create_graph_builder_a(void *(*alloc)(size_t, void *), void (*free)(void *, void *), void *user) {
   graph_builder_t *g = (*alloc)(sizeof(graph_builder_t), user);
 
   if (g == NULL) {
     return NULL;
   }
 
-  g->panicky = panicky;
+  g->panicky = 0;
 
   g->source_data.ary = NULL;
   g->source_data.size = 0;
@@ -239,6 +237,10 @@ graph_builder_t *create_graph_builder_a(int panicky,
   g->a.user = user;
 
   return g;
+}
+
+void graph_builder_abort_on_error(graph_builder_t *g) {
+  g->panicky = 1;
 }
 
 void destroy_graph_builder(graph_builder_t *g) {

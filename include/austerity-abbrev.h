@@ -51,5 +51,7 @@
 #define stdio_sink austerity_stdio_sink
 #define stdio_source austerity_stdio_source
 #define str_source austerity_str_source
+#define graph_builder_abort_on_error                                                               \
+  austerity_graph_builder_abort_on_error // FIXME: sort these in an intelligent way
 
 #endif
