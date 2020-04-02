@@ -4,6 +4,7 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -76,21 +77,21 @@ struct austerity_function_builder {
 };
 
 struct austerity_graph_builder {
-  unsigned int abort_on_error : 1;
+  error_t error;
 
-  struct {
-    const char *function_name;
-    int errnum;
-    const char *english;
-  } error;
+  struct abort_on_error {
+    unsigned int active : 1;
+    void (*callback)(error_t *, void *);
+    void *user;
+  } abort_on_error;
 
-  struct {
+  struct transformer_vec {
     transformer_t *ary;
     st_size_t size;
     st_size_t capacity;
   } transformers;
 
-  struct {
+  struct source_data_vec {
     source_data_t *ary;
     st_size_t size;
     st_size_t capacity;
@@ -106,7 +107,7 @@ struct austerity_graph_builder {
     struct function_builder_list *next;
   } * fns;
 
-  struct {
+  struct allocator {
     void *(*alloc)(size_t, void *);
     void (*free)(void *, void *);
     void *user;
@@ -129,13 +130,19 @@ static void default_free(void *ptr, void *user) {
 
 static void
 push_error(graph_builder_t *g, const char *function_name, int errnum, const char *english) {
-  if (g->error.errnum == 0) {
-    g->error.function_name = function_name;
-    g->error.errnum = errnum;
-    g->error.english = english;
+  error_t *error = &g->error;
+
+  if (error->errnum == 0) {
+    *error = (error_t){function_name, errnum, english};
   }
 
-  if (g->abort_on_error) {
+  struct abort_on_error *a = &g->abort_on_error;
+
+  if (a->active) {
+    if (a->callback != NULL) {
+      (*a->callback)(error, a->user);
+    }
+
     abort();
   }
 }
@@ -152,10 +159,12 @@ static source_t create_sources(graph_builder_t *g, size_t tf_index, size_t n);
 
 static transformer_t *
 push_transformer(source_t *first, graph_builder_t *g, size_t n_out, const char *api_fn_name) {
-  assert(g->transformers.size <= g->transformers.capacity);
+  struct transformer_vec *tx = &g->transformers;
 
-  if (g->transformers.size == g->transformers.capacity) {
-    const size_t capacity = 2 * g->transformers.capacity + 16;
+  assert(tx->size <= tx->capacity);
+
+  if (tx->size == tx->capacity) {
+    const size_t capacity = 2 * tx->capacity + 16;
 
     transformer_t *ary = ALLOC_N(transformer_t, capacity, g);
 
@@ -164,16 +173,16 @@ push_transformer(source_t *first, graph_builder_t *g, size_t n_out, const char *
       return NULL;
     }
 
-    memcpy(ary, g->transformers.ary, sizeof(transformer_t) * g->transformers.capacity);
-    FREE(g->transformers.ary, g);
+    memcpy(ary, tx->ary, sizeof(transformer_t) * tx->capacity);
+    FREE(tx->ary, g);
 
-    g->transformers.ary = ary;
-    g->transformers.capacity = capacity;
+    tx->ary = ary;
+    tx->capacity = capacity;
   }
 
-  assert(g->transformers.size < g->transformers.capacity);
+  assert(tx->size < tx->capacity);
 
-  const source_t sources = create_sources(g, g->transformers.size, n_out);
+  const source_t sources = create_sources(g, tx->size, n_out);
 
   if (sources == DEV_NULL) {
     push_alloc_error(g, api_fn_name);
@@ -181,14 +190,16 @@ push_transformer(source_t *first, graph_builder_t *g, size_t n_out, const char *
   }
 
   *first = sources;
-  return &g->transformers.ary[g->transformers.size++];
+  return &tx->ary[tx->size++];
 }
 
 static source_t create_sources(graph_builder_t *g, size_t tf_index, size_t n) {
-  assert(g->source_data.size <= g->source_data.capacity);
+  struct source_data_vec *sx = &g->source_data;
 
-  if (g->source_data.size + n > g->source_data.capacity) {
-    const size_t capacity = 2 * g->transformers.capacity + n;
+  assert(sx->size <= sx->capacity);
+
+  if (sx->size + n > sx->capacity) {
+    const size_t capacity = 2 * sx->capacity + n;
 
     source_data_t *ary = ALLOC_N(source_data_t, capacity, g);
 
@@ -196,17 +207,17 @@ static source_t create_sources(graph_builder_t *g, size_t tf_index, size_t n) {
       return DEV_NULL;
     }
 
-    memcpy(ary, g->source_data.ary, sizeof(source_data_t) * g->source_data.capacity);
-    FREE(g->source_data.ary, g);
+    memcpy(ary, sx->ary, sizeof(source_data_t) * sx->capacity);
+    FREE(sx->ary, g);
 
-    g->source_data.ary = ary;
-    g->source_data.capacity = capacity;
+    sx->ary = ary;
+    sx->capacity = capacity;
   }
 
-  assert(g->source_data.size + n <= g->source_data.capacity);
+  assert(sx->size + n <= sx->capacity);
 
   for (size_t i = 0; i < n; i++) {
-    source_data_t *data = &g->source_data.ary[g->source_data.size + i];
+    source_data_t *data = &sx->ary[sx->size + i];
 
     data->tf_index = tf_index;
     data->out_index = i;
@@ -214,9 +225,8 @@ static source_t create_sources(graph_builder_t *g, size_t tf_index, size_t n) {
     data->needs_path = 0;
   }
 
-  const size_t result = g->source_data.size;
-
-  g->source_data.size += n;
+  const size_t result = sx->size;
+  sx->size += n;
 
   return result;
 }
@@ -251,29 +261,34 @@ create_graph_builder_a(void *(*alloc)(size_t, void *), void (*free)(void *, void
     return NULL;
   }
 
-  g->abort_on_error = 0;
-
-  g->source_data.ary = NULL;
-  g->source_data.size = 0;
-  g->source_data.capacity = 0;
-
-  g->transformers.ary = NULL;
-  g->transformers.size = 0;
-  g->transformers.capacity = 0;
-
+  g->abort_on_error = (struct abort_on_error){0, NULL, NULL};
+  g->transformers = (struct transformer_vec){NULL, 0, 0};
+  g->source_data = (struct source_data_vec){NULL, 0, 0};
   g->cmds = NULL;
-
   g->fns = NULL;
-
-  g->a.alloc = alloc;
-  g->a.free = free;
-  g->a.user = user;
+  g->a = (struct allocator){alloc, free, NULL};
 
   return g;
 }
 
+static void default_abort_on_error_callback(error_t *err, void *user) {
+  fprintf(user,
+          "austerity: %s: %s (errno %d); aborting\n",
+          err->function_name,
+          err->english,
+          err->errnum);
+
+  fflush(user);
+}
+
 void graph_builder_abort_on_error(graph_builder_t *g) {
-  g->abort_on_error = 1;
+  graph_builder_abort_on_error_c(g, default_abort_on_error_callback, stderr);
+}
+
+void graph_builder_abort_on_error_c(graph_builder_t *g,
+                                    void (*callback)(error_t *, void *),
+                                    void *user) {
+  g->abort_on_error = (struct abort_on_error){1, callback, user};
 }
 
 void destroy_graph_builder(graph_builder_t *g) {

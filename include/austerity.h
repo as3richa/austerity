@@ -14,6 +14,12 @@ extern "C" {
 
 typedef struct austerity_graph_builder austerity_graph_builder_t;
 
+typedef struct austerity_error {
+  const char *function_name;
+  int errnum;
+  const char *english;
+} austerity_error_t;
+
 austerity_graph_builder_t *austerity_create_graph_builder(void);
 
 austerity_graph_builder_t *austerity_create_graph_builder_a(void *(*alloc)(size_t, void *),
@@ -21,6 +27,10 @@ austerity_graph_builder_t *austerity_create_graph_builder_a(void *(*alloc)(size_
                                                             void *user);
 
 void austerity_graph_builder_abort_on_error(austerity_graph_builder_t *g);
+
+void austerity_graph_builder_abort_on_error_c(austerity_graph_builder_t *g,
+                                              void (*callback)(austerity_error_t *, void *),
+                                              void *user);
 
 void austerity_destroy_graph_builder(austerity_graph_builder_t *g);
 
