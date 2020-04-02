@@ -76,6 +76,31 @@ struct austerity_function_builder {
   int x;
 };
 
+struct austerity_environment {
+  graph_builder_t *g;
+
+  char *wd;
+
+  int clearenv;
+
+  struct un_setenv_op_vec {
+    struct un_setenv_op {
+      unsigned int set : 1;
+      unsigned int overwrite : 1;
+      char *name;
+      char *value;
+    } * ary;
+
+    size_t size;
+    size_t capacity;
+  } un_setenv_ops;
+
+  uid_t ruid, euid;
+  gid_t rgid, egid;
+
+  struct austerity_environment *next;
+};
+
 struct austerity_graph_builder {
   error_t error;
 
@@ -106,6 +131,9 @@ struct austerity_graph_builder {
     function_builder_t fn;
     struct function_builder_list *next;
   } * fns;
+
+  environment_t *envs;
+  environment_t *default_env;
 
   struct allocator {
     void *(*alloc)(size_t, void *);
@@ -459,4 +487,166 @@ source_t static_buffer_source(graph_builder_t *g, const char *data, size_t size)
   t->data.static_buffer.size = size;
 
   return out;
+}
+
+environment_t *create_environment(graph_builder_t *g) {
+  environment_t *env = ALLOC(environment_t, g);
+
+  if (env == NULL) {
+    push_alloc_error(g, __func__);
+    return NULL;
+  }
+
+  *env =
+      (environment_t){g, NULL, 1, (struct un_setenv_op_vec){NULL, 0, 0}, -1, -1, -1, -1, g->envs};
+  g->envs = env;
+
+  return env;
+}
+
+int set_default_environment(graph_builder_t *g, environment_t *env) {
+  if (env == NULL) {
+    push_inval_error(g, __func__, "env is NULL");
+    return -1;
+  }
+
+  g->default_env = env;
+  return 0;
+}
+
+int environment_setwd(environment_t *env, const char *path) {
+  if (env == NULL) {
+    return -1;
+  }
+
+  char *my_path = copy_str(env->g, path, __func__);
+
+  if (my_path == NULL) {
+    return -1;
+  }
+
+  env->wd = my_path;
+  return 0;
+}
+
+int environment_keepenv(environment_t *env) {
+  if (env == NULL) {
+    return -1;
+  }
+
+  env->clearenv = 0;
+  return 0;
+}
+
+int environment_clearenv(environment_t *env) {
+  if (env == NULL) {
+    return -1;
+  }
+
+  env->clearenv = 1;
+  env->un_setenv_ops.size = 0;
+
+  return 0;
+}
+
+struct un_setenv_op *emplace_un_setenv_op(environment_t *env, const char *api_fn_name) {
+  struct un_setenv_op_vec *ops = &env->un_setenv_ops;
+  graph_builder_t *g = env->g;
+
+  assert(ops->size <= ops->capacity);
+
+  if (ops->size == ops->capacity) {
+    const size_t capacity = 2 * ops->capacity + 1;
+    struct un_setenv_op *ary = ALLOC_N(struct un_setenv_op, capacity, g);
+
+    if (ary == NULL) {
+      push_alloc_error(g, api_fn_name);
+      return NULL;
+    }
+
+    memcpy(ary, ops->ary, sizeof(struct un_setenv_op_vec) * ops->capacity);
+
+    ops->ary = ary;
+    ops->capacity = capacity;
+  }
+
+  assert(ops->size < ops->capacity);
+
+  return &ops->ary[ops->size++];
+}
+
+int environment_setenv(environment_t *env, const char *name, const char *value, int overwrite) {
+  if (env == NULL) {
+    return -1;
+  }
+
+  graph_builder_t *g = env->g;
+
+  char *my_name = copy_str(g, name, __func__);
+
+  if (my_name == NULL) {
+    return -1;
+  }
+
+  char *my_value = copy_str(g, value, __func__);
+
+  if (my_value == NULL) {
+    FREE(my_name, g);
+    return -1;
+  }
+
+  struct un_setenv_op *op = emplace_un_setenv_op(env, __func__);
+
+  if (op == NULL) {
+    FREE(my_name, g);
+    FREE(my_value, g);
+    return -1;
+  }
+
+  *op = (struct un_setenv_op){1, overwrite, my_name, my_value};
+  return 0;
+}
+
+int environment_unsetenv(environment_t *env, const char *name) {
+  if (env == NULL) {
+    return -1;
+  }
+
+  graph_builder_t *g = env->g;
+
+  char *my_name = copy_str(g, name, __func__);
+
+  if (my_name == NULL) {
+    return -1;
+  }
+
+  struct un_setenv_op *op = emplace_un_setenv_op(env, __func__);
+
+  if (op == NULL) {
+    FREE(my_name, g);
+    return -1;
+  }
+
+  *op = (struct un_setenv_op){0, 0, my_name, NULL};
+  return 0;
+}
+
+int environment_setreuid(environment_t *env, uid_t ruid, uid_t euid) {
+  if (env == NULL) {
+    return -1;
+  }
+
+  env->ruid = ruid;
+  env->euid = euid;
+  return 0;
+}
+
+int environment_setregid(environment_t *env, gid_t rgid, gid_t egid) {
+  if (env == NULL) {
+    return -1;
+  }
+
+  env->rgid = rgid;
+  env->egid = egid;
+  return 0;
 }

@@ -139,7 +139,7 @@ typedef struct austerity_function_io {
 } austerity_fn_io_t;
 
 typedef int (*austerity_function_t)(
-    size_t n_in, austerity_fn_io_t *in, size_t n_out, austerity_fn_io_t *out, void *user);
+    austerity_fn_io_t *in, size_t n_in, austerity_fn_io_t *out, size_t n_out, void *user);
 
 austerity_function_builder_t *austerity_create_function_builder(austerity_graph_builder_t *g,
                                                                 size_t n_out,
