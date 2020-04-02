@@ -3,6 +3,7 @@
 #include "austerity.h"
 
 #include <assert.h>
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -14,6 +15,7 @@ typedef enum {
   TT_STDIO_SOURCE,
   TT_STR_SOURCE,
   TT_BUFFER_SOURCE,
+  TT_STATIC_STR_SOURCE,
   TT_STATIC_BUFFER_SOURCE,
   TT_FD_SINK,
   TT_FILE_SINK,
@@ -77,6 +79,12 @@ struct austerity_graph_builder {
   unsigned int abort_on_error : 1;
 
   struct {
+    const char *function_name;
+    int errnum;
+    const char *english;
+  } error;
+
+  struct {
     transformer_t *ary;
     st_size_t size;
     st_size_t capacity;
@@ -109,16 +117,6 @@ struct austerity_graph_builder {
 #define ALLOC_N(type, n, g) (type *)((g)->a.alloc(sizeof(type) * (n), (g)->a.user))
 #define FREE(ptr, g) ((g)->a.free(ptr, (g)->a.user))
 
-#define CHECK_ALLOC(ptr, g, r)                                                                     \
-  do {                                                                                             \
-    if ((ptr) == NULL) {                                                                           \
-      if ((g)->abort_on_error) {                                                                          \
-        abort(); /* FIXME: error message(?) */                                                     \
-      }                                                                                            \
-      return (r);                                                                                  \
-    }                                                                                              \
-  } while (0)
-
 static void *default_alloc(size_t size, void *user) {
   (void)user;
   return malloc(size);
@@ -129,16 +127,42 @@ static void default_free(void *ptr, void *user) {
   free(ptr);
 }
 
+static void
+push_error(graph_builder_t *g, const char *function_name, int errnum, const char *english) {
+  if (g->error.errnum == 0) {
+    g->error.function_name = function_name;
+    g->error.errnum = errnum;
+    g->error.english = english;
+  }
+
+  if (g->abort_on_error) {
+    abort();
+  }
+}
+
+static void push_inval_error(graph_builder_t *g, const char *function_name, const char *english) {
+  push_error(g, function_name, EINVAL, english);
+}
+
+static void push_alloc_error(graph_builder_t *g, const char *function_name) {
+  push_error(g, function_name, ENOMEM, "cannot allocate memory");
+}
+
 static source_t create_sources(graph_builder_t *g, size_t tf_index, size_t n);
 
-static transformer_t *push_transformer(source_t *first, graph_builder_t *g, size_t n_out) {
+static transformer_t *
+push_transformer(source_t *first, graph_builder_t *g, size_t n_out, const char *api_fn_name) {
   assert(g->transformers.size <= g->transformers.capacity);
 
   if (g->transformers.size == g->transformers.capacity) {
     const size_t capacity = 2 * g->transformers.capacity + 16;
 
     transformer_t *ary = ALLOC_N(transformer_t, capacity, g);
-    CHECK_ALLOC(ary, g, NULL);
+
+    if (ary == NULL) {
+      push_alloc_error(g, api_fn_name);
+      return NULL;
+    }
 
     memcpy(ary, g->transformers.ary, sizeof(transformer_t) * g->transformers.capacity);
     FREE(g->transformers.ary, g);
@@ -152,6 +176,7 @@ static transformer_t *push_transformer(source_t *first, graph_builder_t *g, size
   const source_t sources = create_sources(g, g->transformers.size, n_out);
 
   if (sources == DEV_NULL) {
+    push_alloc_error(g, api_fn_name);
     return NULL;
   }
 
@@ -166,7 +191,10 @@ static source_t create_sources(graph_builder_t *g, size_t tf_index, size_t n) {
     const size_t capacity = 2 * g->transformers.capacity + n;
 
     source_data_t *ary = ALLOC_N(source_data_t, capacity, g);
-    CHECK_ALLOC(ary, g, DEV_NULL);
+
+    if (ary == NULL) {
+      return DEV_NULL;
+    }
 
     memcpy(ary, g->source_data.ary, sizeof(source_data_t) * g->source_data.capacity);
     FREE(g->source_data.ary, g);
@@ -193,17 +221,22 @@ static source_t create_sources(graph_builder_t *g, size_t tf_index, size_t n) {
   return result;
 }
 
-static char *copy_buffer(const char *buffer, size_t size, graph_builder_t *g) {
+static char *
+copy_buffer(graph_builder_t *g, const char *buffer, size_t size, const char *api_fn_name) {
   char *copy = ALLOC_N(char, size, g);
-  CHECK_ALLOC(copy, g, NULL);
+
+  if (copy == NULL) {
+    push_alloc_error(g, api_fn_name);
+    return NULL;
+  }
 
   memcpy(copy, buffer, size);
 
   return copy;
 }
 
-static char *copy_str(const char *str, graph_builder_t *g) {
-  return copy_buffer(str, strlen(str) + 1, g);
+static char *copy_str(graph_builder_t *g, const char *str, const char *api_fn_name) {
+  return copy_buffer(g, str, strlen(str) + 1, api_fn_name);
 }
 
 graph_builder_t *create_graph_builder(void) {
@@ -245,7 +278,6 @@ void graph_builder_abort_on_error(graph_builder_t *g) {
 
 void destroy_graph_builder(graph_builder_t *g) {
   FREE(g->source_data.ary, g);
-
   FREE(g->transformers.ary, g);
 
   for (struct command_builder_list *it = g->cmds, *next; it != NULL; it = next) {
@@ -262,19 +294,39 @@ void destroy_graph_builder(graph_builder_t *g) {
 }
 
 source_t fd_source(graph_builder_t *g, int fd) {
+  if (fd < 0) {
+    push_inval_error(g, __func__, "fd is negative");
+    return DEV_NULL;
+  }
+
   source_t out;
-  transformer_t *t = push_transformer(&out, g, 1);
+  transformer_t *t = push_transformer(&out, g, 1, __func__);
+
+  if (t == NULL) {
+    return DEV_NULL;
+  }
+
   t->type = TT_FD_SOURCE;
   t->data.fd = fd;
+
   return out;
 }
 
 source_t file_source(graph_builder_t *g, const char *path, int flags) {
-  const char *my_path = copy_str(path, g);
-  CHECK_ALLOC(my_path, g, DEV_NULL);
+  if (path == NULL) {
+    push_inval_error(g, __func__, "path is NULL");
+    return DEV_NULL;
+  }
+
+  const char *my_path = copy_str(g, path, __func__);
+
+  if (my_path == NULL) {
+    return DEV_NULL;
+  }
 
   source_t out;
-  transformer_t *t = push_transformer(&out, g, 1);
+  transformer_t *t = push_transformer(&out, g, 1, __func__);
+
   t->type = TT_FILE_SOURCE;
   t->data.file.path = my_path;
   t->data.file.flags = flags;
@@ -283,23 +335,66 @@ source_t file_source(graph_builder_t *g, const char *path, int flags) {
 }
 
 source_t stdio_source(graph_builder_t *g, FILE *file) {
+  if (file == NULL) {
+    push_inval_error(g, __func__, "file is NULL");
+    return DEV_NULL;
+  }
+
   source_t out;
-  transformer_t *t = push_transformer(&out, g, 1);
+  transformer_t *t = push_transformer(&out, g, 1, __func__);
+
   t->type = TT_STDIO_SOURCE;
   t->data.stdio_file = file;
+
   return out;
 }
 
 source_t str_source(graph_builder_t *g, const char *str) {
-  return buffer_source(g, str, strlen(str));
+  if (str == NULL) {
+    push_inval_error(g, __func__, "str is NULL");
+    return DEV_NULL;
+  }
+
+  const size_t size = strlen(str);
+  char *my_str = copy_buffer(g, str, size, __func__);
+
+  if (my_str == NULL) {
+    return DEV_NULL;
+  }
+
+  source_t out;
+  transformer_t *t = push_transformer(&out, g, 1, __func__);
+
+  if (t == NULL) {
+    return DEV_NULL;
+  }
+
+  t->type = TT_STR_SOURCE;
+  t->data.buffer.data = my_str;
+  t->data.buffer.size = size;
+
+  return out;
 }
 
 source_t buffer_source(graph_builder_t *g, const char *data, size_t size) {
-  char *my_data = copy_buffer(data, size, g);
-  CHECK_ALLOC(my_data, g, DEV_NULL);
+  if (data == NULL) {
+    push_inval_error(g, __func__, "data is NULL");
+    return DEV_NULL;
+  }
+
+  char *my_data = copy_buffer(g, data, size, __func__);
+
+  if (my_data == NULL) {
+    return DEV_NULL;
+  }
 
   source_t out;
-  transformer_t *t = push_transformer(&out, g, 1);
+  transformer_t *t = push_transformer(&out, g, 1, __func__);
+
+  if (t == NULL) {
+    return DEV_NULL;
+  }
+
   t->type = TT_BUFFER_SOURCE;
   t->data.buffer.data = my_data;
   t->data.buffer.size = size;
@@ -308,14 +403,41 @@ source_t buffer_source(graph_builder_t *g, const char *data, size_t size) {
 }
 
 source_t static_str_source(graph_builder_t *g, const char *str) {
-  return static_buffer_source(g, str, strlen(str));
+  if (str == NULL) {
+    push_inval_error(g, __func__, "str is NULL");
+    return DEV_NULL;
+  }
+
+  source_t out;
+  transformer_t *t = push_transformer(&out, g, 1, __func__);
+
+  if (t == NULL) {
+    return DEV_NULL;
+  }
+
+  t->type = TT_STATIC_STR_SOURCE;
+  t->data.static_buffer.data = str;
+  t->data.static_buffer.size = strlen(str);
+
+  return out;
 }
 
 source_t static_buffer_source(graph_builder_t *g, const char *data, size_t size) {
+  if (data == NULL) {
+    push_inval_error(g, __func__, "data is NULL");
+    return DEV_NULL;
+  }
+
   source_t out;
-  transformer_t *t = push_transformer(&out, g, 1);
+  transformer_t *t = push_transformer(&out, g, 1, __func__);
+
+  if (t == NULL) {
+    return DEV_NULL;
+  }
+
   t->type = TT_STATIC_BUFFER_SOURCE;
   t->data.static_buffer.data = data;
   t->data.static_buffer.size = size;
+
   return out;
 }

@@ -53,14 +53,14 @@ austerity_static_buffer_source(austerity_graph_builder_t *g, const char *data, s
 // Sinks
 // ============================================================================
 
-int austerity_fd_sink(austerity_graph_builder_t *g, int fd, austerity_source_t source);
+int austerity_fd_sink(austerity_graph_builder_t *g, int fd, austerity_source_t in);
 
 int austerity_file_sink(austerity_graph_builder_t *g,
                         const char *path,
                         int flags,
-                        austerity_source_t source);
+                        austerity_source_t in);
 
-int austerity_stdio_sink(austerity_graph_builder_t *g, FILE *file, austerity_source_t source);
+int austerity_stdio_sink(austerity_graph_builder_t *g, FILE *file, austerity_source_t in);
 
 // ============================================================================
 // Environments
