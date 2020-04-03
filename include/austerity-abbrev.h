@@ -19,7 +19,7 @@
 #define destroy_graph_builder austerity_destroy_graph_builder
 #define environment austerity_environment
 #define environment_clearenv austerity_environment_clearenv
-#define environment_keepenv austerity_environment_keepenv
+#define environment_preserve_env austerity_environment_preserve_env
 #define environment_setenv austerity_environment_setenv
 #define environment_setregid austerity_environment_setregid
 #define environment_setreuid austerity_environment_setreuid
@@ -55,5 +55,6 @@
 #define error_t austerity_error_t
 #define DEV_NULL AUSTERITY_DEV_NULL
 #define NIL_SOURCE AUSTERITY_NIL_SOURCE
+#define argv_t austerity_argv_t
 
 #endif
