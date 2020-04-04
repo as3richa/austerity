@@ -59,19 +59,23 @@ typedef struct {
     struct {
       int fixme;
     } function;
-
-    struct {
-      st_size_t tf_index;
-      st_size_t out_index;
-    } tee;
   } data;
-
-  struct transformer *next;
 } transformer_t;
 
 typedef struct {
-  st_size_t tf_index;
-  st_size_t out_index;
+  unsigned int tap : 1;
+
+  union {
+    struct {
+      st_size_t tf;
+      st_size_t index;
+    } tf_out;
+
+    struct {
+      unsigned int needs_path : 1;
+      source_t out;
+    } tap;
+  } data;
 } source_data_t;
 
 struct austerity_environment {
@@ -244,64 +248,62 @@ create_sources(graph_builder_t *g, size_t tf_index, size_t n, const char *api_fn
 
 static transformer_t *
 push_transformer(source_t *first, graph_builder_t *g, size_t n_out, const char *api_fn_name) {
-  struct transformer_vec *tx = &g->transformers;
+  struct transformer_vec *tfs = &g->transformers;
 
-  assert(tx->size <= tx->capacity);
+  assert(tfs->size <= tfs->capacity);
 
-  if (tx->size == tx->capacity) {
-    const size_t capacity = 2 * tx->capacity + 1;
+  if (tfs->size == tfs->capacity) {
+    const size_t capacity = 2 * tfs->capacity + 1;
     transformer_t *ary =
-        internal_realloc(tx->ary, sizeof(transformer_t), capacity, tx->capacity, g, api_fn_name);
+        internal_realloc(tfs->ary, sizeof(transformer_t), capacity, tfs->capacity, g, api_fn_name);
 
     if (ary == NULL) {
       return NULL;
     }
 
-    tx->ary = ary;
-    tx->capacity = capacity;
+    tfs->ary = ary;
+    tfs->capacity = capacity;
   }
 
-  assert(tx->size < tx->capacity);
+  assert(tfs->size < tfs->capacity);
 
-  const source_t sources = create_sources(g, tx->size, n_out, api_fn_name);
+  const source_t sources = create_sources(g, tfs->size, n_out, api_fn_name);
 
   if (sources == NIL_SOURCE) {
     return NULL;
   }
 
   *first = sources;
-  return &tx->ary[tx->size++];
+  return &tfs->ary[tfs->size++];
 }
 
 static source_t
 create_sources(graph_builder_t *g, size_t tf_index, size_t n, const char *api_fn_name) {
-  struct source_data_vec *sx = &g->source_data;
+  struct source_data_vec *source_data = &g->source_data;
 
-  assert(sx->size <= sx->capacity);
+  assert(source_data->size <= source_data->capacity);
 
-  if (sx->size + n > sx->capacity) {
-    const size_t capacity = 2 * sx->capacity + n;
-    source_data_t *ary =
-        internal_realloc(sx->ary, sizeof(source_data_t), capacity, sx->capacity, g, api_fn_name);
+  if (source_data->size + n > source_data->capacity) {
+    const size_t capacity = 2 * source_data->capacity + n;
+    source_data_t *ary = internal_realloc(
+        source_data->ary, sizeof(source_data_t), capacity, source_data->capacity, g, api_fn_name);
 
     if (ary == NULL) {
       return NIL_SOURCE;
     }
 
-    sx->ary = ary;
-    sx->capacity = capacity;
+    source_data->ary = ary;
+    source_data->capacity = capacity;
   }
 
-  assert(sx->size + n <= sx->capacity);
+  assert(source_data->size + n <= source_data->capacity);
 
   for (size_t i = 0; i < n; i++) {
-    source_data_t *data = &sx->ary[sx->size + i];
-    data->tf_index = tf_index;
-    data->out_index = i;
+    source_data_t *data = &source_data->ary[source_data->size + i];
   }
 
-  const size_t result = sx->size;
-  sx->size += n;
+  const size_t result = source_data->size;
+  source_data->size += n;
 
   return result;
 }
