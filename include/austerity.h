@@ -160,6 +160,7 @@ int austerity_function(austerity_source_t *out,
                        austerity_graph_builder_t *g,
                        austerity_function_t fn,
                        const char *name,
+                       void *user,
                        const austerity_source_t *in,
                        size_t n_in);
 
@@ -167,13 +168,15 @@ int austerity_function_0(austerity_source_t *out,
                          size_t n_out,
                          austerity_graph_builder_t *g,
                          austerity_function_t fn,
-                         const char *name);
+                         const char *name,
+                         void *user);
 
 int austerity_function_1(austerity_source_t *out,
                          size_t n_out,
                          austerity_graph_builder_t *g,
                          austerity_function_t fn,
                          const char *name,
+                         void *user,
                          austerity_source_t in);
 
 int austerity_function_2(austerity_source_t *out,
@@ -181,13 +184,16 @@ int austerity_function_2(austerity_source_t *out,
                          austerity_graph_builder_t *g,
                          austerity_function_t fn,
                          const char *name,
+                         void *user,
                          austerity_source_t left,
                          austerity_source_t right);
 
 int austerity_function_e(austerity_source_t *out,
                          size_t n_out,
                          austerity_graph_builder_t *g,
+                         austerity_function_t fn,
                          const char *name,
+                         void *user,
                          austerity_environment_t *env,
                          const austerity_source_t *in,
                          size_t n_in);
@@ -197,6 +203,7 @@ int austerity_function_v(austerity_source_t *out,
                          austerity_graph_builder_t *g,
                          austerity_function_t fn,
                          const char *name,
+                         void *user,
                          size_t n_in,
                          ... /* austerity_source_t */);
 
