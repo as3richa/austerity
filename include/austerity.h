@@ -56,14 +56,6 @@ austerity_stream_t *
 austerity_static_buffer_source(austerity_graph_builder_t *g, const char *data, size_t size);
 
 // ============================================================================
-// Pipes??
-// ============================================================================
-
-typedef uint_least32_t austerity_pipe_t;
-
-austerity_stream_t *austerity_pipe(austerity_pipe_t *write_end);
-
-// ============================================================================
 // Sinks
 // ============================================================================
 
@@ -111,6 +103,8 @@ typedef struct austerity_argv austerity_argv_t;
 
 austerity_argv_t *austerity_create_argv(austerity_graph_builder_t *g);
 
+austerity_argv_t *austerity_create_argv_v(austerity_graph_builder_t *g);
+
 int austerity_argv_push_str(austerity_argv_t *argv, const char *str);
 
 int austerity_argv_push_strs(austerity_argv_t *argv, char **const strs, size_t n_strs);
@@ -118,8 +112,6 @@ int austerity_argv_push_strs(austerity_argv_t *argv, char **const strs, size_t n
 int austerity_argv_push_strs_v(austerity_argv_t *argv, ...);
 
 int austerity_argv_push_source(austerity_argv_t *argv, austerity_stream_t *in);
-
-int austerity_argv_push_pipe(austerity_argv_t *argv, austerity_pipe_t out);
 
 austerity_stream_t *austerity_command(austerity_graph_builder_t *g,
                                       const char *path,
