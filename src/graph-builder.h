@@ -1,20 +1,23 @@
 #ifndef GRAPH_BUILDER_H
 #define GRAPH_BUILDER_H
 
-#define AUSTERITY_ABBREV
-
-#include "austerity.h"
+#include "common.h"
 #include "environment.h"
 
-#include <stdint.h>
-
 typedef uint_least32_t st_size_t;
-
-////////////////////////
-typedef struct transformer transformer_t;
-typedef struct source_data source_data_t;
+typedef st_size_t tap_t;
 
 struct austerity_graph_builder {
+  environment_t *default_env;
+
+  struct stream_processor_vec {
+    struct stream_processor *ary;
+    size_t size;
+    size_t capacity;
+  } sps;
+
+  tap_t n_taps;
+
   error_t error;
 
   struct abort_on_error {
@@ -23,24 +26,10 @@ struct austerity_graph_builder {
     void *user;
   } abort_on_error;
 
-  struct transformer_vec {
-    transformer_t *ary;
-    st_size_t size;
-    st_size_t capacity;
-  } transformers;
-
-  struct source_data_vec {
-    source_data_t *ary;
-    st_size_t size;
-    st_size_t capacity;
-  } source_data;
-
   struct env_list {
     struct env_list *next;
     environment_t env;
   } * envs;
-
-  environment_t *default_env;
 
   struct allocator {
     void *(*alloc)(size_t, void *);

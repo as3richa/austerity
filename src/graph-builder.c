@@ -1,9 +1,5 @@
 #include "graph-builder.h"
 
-#include <errno.h>
-#include <stdlib.h>
-#include <string.h>
-
 static void *default_alloc(size_t size, void *user);
 static void default_free(void *ptr, void *user);
 
@@ -24,11 +20,12 @@ create_graph_builder_a(void *(*alloc)(size_t, void *), void (*free)(void *, void
     return NULL;
   }
 
-  g->abort_on_error = (struct abort_on_error){0, NULL, NULL};
-  g->transformers = (struct transformer_vec){NULL, 0, 0};
-  g->source_data = (struct source_data_vec){NULL, 0, 0};
-  g->envs = NULL;
   g->default_env = NULL;
+  g->sps = (struct stream_processor_vec){NULL, 0, 0};
+  g->n_taps = 0;
+  g->error.errnum = 0;
+  g->abort_on_error = (struct abort_on_error){0, NULL, NULL};
+  g->envs = NULL;
   g->a = (struct allocator){alloc, free, NULL};
 
   return g;
@@ -45,8 +42,8 @@ void graph_builder_abort_on_error_c(graph_builder_t *g,
 }
 
 void destroy_graph_builder(graph_builder_t *g) {
-  ifree(g, g->source_data.ary);
-  ifree(g, g->transformers.ary);
+  // FIXME: destroy stream processors
+  ifree(g, g->sps.ary);
 
   for (struct env_list *it = g->envs, *next; it != NULL; it = next) {
     next = it->next;

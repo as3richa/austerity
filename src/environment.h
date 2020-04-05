@@ -1,9 +1,7 @@
 #ifndef ENVIRONMENT_H
 #define ENVIRONMENT_H
 
-#define AUSTERITY_ABBREV
-
-#include "austerity.h"
+#include "common.h"
 
 struct austerity_environment {
   graph_builder_t *g;

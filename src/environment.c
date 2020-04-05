@@ -1,8 +1,6 @@
 #include "environment.h"
+#include "common.h"
 #include "graph-builder.h"
-
-#include <assert.h>
-#include <sys/types.h>
 
 void initialize_environment(environment_t *env, graph_builder_t *g) {
   *env = (environment_t){g, NULL, 1, (struct un_setenv_op_vec){NULL, 0, 0}, -1, -1, -1, -1};
