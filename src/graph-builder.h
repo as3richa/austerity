@@ -4,9 +4,6 @@
 #include "common.h"
 #include "environment.h"
 
-typedef uint_least32_t st_size_t;
-typedef st_size_t tap_t;
-
 struct austerity_graph_builder {
   environment_t *default_env;
 
@@ -39,6 +36,16 @@ struct austerity_graph_builder {
 };
 
 void record_einval(graph_builder_t *g, const char *api_fn_name, const char *english);
+
+#define NULL_CHECK(g, ident, ret) INVAL_CHECK(g, (ident) == NULL, #ident "is NULL", ret)
+
+#define INVAL_CHECK(g, cond, message, ret)                                                         \
+  do {                                                                                             \
+    if (cond) {                                                                                    \
+      record_einval((g), __func__, message);                                                       \
+      return (ret);                                                                                \
+    }                                                                                              \
+  } while (0)
 
 void *ialloc(graph_builder_t *g, size_t size, const char *api_fn_name);
 void *irealloc(graph_builder_t *g,

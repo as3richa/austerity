@@ -12,4 +12,7 @@
 #include <string.h>
 #include <sys/types.h>
 
+typedef uint_least32_t st_size_t;
+typedef st_size_t tap_t;
+
 #endif

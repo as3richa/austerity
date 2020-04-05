@@ -1,21 +1,11 @@
 #include "common.h"
+#include "graph-builder.h"
 #include "stream-processor.h"
 
 static struct stream_processor *emplace_source(graph_builder_t *g, const char *api_fn_name);
 
-#define NULL_CHECK(ident)                                                                          \
-  do {                                                                                             \
-    if ((ident) == NULL) {                                                                         \
-      record_einval(g, __func__, (#ident " is NULL"));                                             \
-      return NULL;                                                                                 \
-    }                                                                                              \
-  } while (0)
-
-source_t *fd_source(graph_builder_t *g, int fd) {
-  if (fd < 0) {
-    record_einval(g, __func__, "fd is negative");
-    return NULL;
-  }
+stream_t *fd_source(graph_builder_t *g, int fd) {
+  INVAL_CHECK(g, fd < 0, "fd is negative", NULL);
 
   struct stream_processor *sp = emplace_source(g, __func__);
 
@@ -24,13 +14,13 @@ source_t *fd_source(graph_builder_t *g, int fd) {
   }
 
   sp->type = SP_FD_SOURCE;
-  sp->data.fd = fd;
+  sp->u.source.fd = fd;
 
   return &sp->out[0];
 }
 
-source_t *path_source(graph_builder_t *g, const char *path) {
-  NULL_CHECK(path);
+stream_t *path_source(graph_builder_t *g, const char *path) {
+  NULL_CHECK(g, path, NULL);
 
   char *my_path = copy_str(g, path, __func__);
 
@@ -46,13 +36,13 @@ source_t *path_source(graph_builder_t *g, const char *path) {
   }
 
   sp->type = SP_PATH_SOURCE;
-  sp->data.path.path = my_path;
+  sp->u.source.path = my_path;
 
   return &sp->out[0];
 }
 
-source_t *c_file_source(graph_builder_t *g, FILE *c_file) {
-  NULL_CHECK(c_file);
+stream_t *c_file_source(graph_builder_t *g, FILE *c_file) {
+  NULL_CHECK(g, c_file, NULL);
 
   struct stream_processor *sp = emplace_source(g, __func__);
 
@@ -61,21 +51,21 @@ source_t *c_file_source(graph_builder_t *g, FILE *c_file) {
   }
 
   sp->type = SP_C_FILE_SOURCE;
-  sp->data.c_file = c_file;
+  sp->u.source.c_file = c_file;
 
   return &sp->out[0];
 }
 
-source_t *str_source(graph_builder_t *g, const char *str) {
+stream_t *str_source(graph_builder_t *g, const char *str) {
   return buffer_source(g, str, strlen(str));
 }
 
-source_t *static_str_source(graph_builder_t *g, const char *str) {
+stream_t *static_str_source(graph_builder_t *g, const char *str) {
   return static_buffer_source(g, str, strlen(str));
 }
 
-source_t *buffer_source(graph_builder_t *g, const char *buffer, size_t size) {
-  NULL_CHECK(buffer);
+stream_t *buffer_source(graph_builder_t *g, const char *buffer, size_t size) {
+  NULL_CHECK(g, buffer, NULL);
 
   char *my_buffer = copy_buffer(g, buffer, size, __func__);
 
@@ -91,13 +81,13 @@ source_t *buffer_source(graph_builder_t *g, const char *buffer, size_t size) {
   }
 
   sp->type = SP_BUFFER_SOURCE;
-  sp->data.buffer = (struct buffer){my_buffer, size};
+  sp->u.source.buf = (struct buffer){my_buffer, size};
 
   return &sp->out[0];
 }
 
-source_t *static_buffer_source(graph_builder_t *g, const char *buffer, size_t size) {
-  NULL_CHECK(buffer);
+stream_t *static_buffer_source(graph_builder_t *g, const char *buffer, size_t size) {
+  NULL_CHECK(g, buffer, NULL);
 
   struct stream_processor *sp = emplace_source(g, __func__);
 
@@ -106,7 +96,7 @@ source_t *static_buffer_source(graph_builder_t *g, const char *buffer, size_t si
   }
 
   sp->type = SP_STATIC_BUFFER_SOURCE;
-  sp->data.static_buffer = (struct static_buffer){buffer, size};
+  sp->u.source.sbuf = (struct static_buffer){buffer, size};
 
   return &sp->out[0];
 }

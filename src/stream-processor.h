@@ -2,14 +2,65 @@
 #define STREAM_PROCESSOR_H
 
 #include "common.h"
-#include "graph-builder.h"
 
-struct austerity_source {
+struct austerity_stream {
   struct tap_vec {
     tap_t *ary;
     st_size_t size;
     st_size_t capacity;
   } taps;
+};
+
+struct buffer {
+  char *bytes;
+  st_size_t size;
+};
+
+struct static_buffer {
+  const char *bytes;
+  st_size_t size;
+};
+
+union sp_source {
+  int fd;
+  char *path;
+  FILE *c_file;
+  struct buffer buf;
+  struct static_buffer sbuf;
+};
+
+struct sp_sink {
+  tap_t in;
+
+  union {
+    int fd;
+
+    struct wpath {
+      char *path;
+      unsigned int append : 1;
+    } path;
+
+    FILE *c_file;
+  } u;
+};
+
+struct sp_command {
+  environment_t *env;
+  char *path;
+  argv_t *argv;
+  tap_t stdin;
+};
+
+struct sp_function {
+  environment_t *env;
+
+  function_t *fn;
+  const char *name;
+  void *context;
+
+  tap_t *in;
+  size_t n_in;
+  size_t n_out;
 };
 
 struct stream_processor {
@@ -27,41 +78,19 @@ struct stream_processor {
     SP_COMMAND
   } type;
 
-  st_size_t n_out;
-  source_t *out;
+  stream_t *out;
 
   union {
-    int fd;
-
-    struct {
-      const char *path;
-      unsigned int append : 1;
-    } path;
-
-    FILE *c_file;
-
-    struct buffer {
-      char *bytes;
-      st_size_t size;
-    } buffer;
-
-    struct static_buffer {
-      const char *bytes;
-      st_size_t size;
-    } static_buffer;
-
-    struct {
-      environment_t *env;
-      char *path;
-      argv_t *argv;
-      tap_t stdin;
-    } command;
-  } data;
+    union sp_source source;
+    struct sp_sink sink;
+    struct sp_command command;
+    struct sp_function function;
+  } u;
 };
 
 struct stream_processor *emplace_stream_processor(tap_t *tap0,
                                                   graph_builder_t *g,
-                                                  source_t **in,
+                                                  stream_t **in,
                                                   size_t n_in,
                                                   size_t n_out,
                                                   const char *api_fn_name);

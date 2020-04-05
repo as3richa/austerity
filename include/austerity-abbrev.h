@@ -45,7 +45,7 @@
 #define io_param_sink austerity_io_param_sink
 #define io_param_source austerity_io_param_source
 #define set_default_environment austerity_set_default_environment
-#define source_t austerity_source_t
+#define stream_t austerity_stream_t
 #define static_buffer_source austerity_static_buffer_source
 #define stdio_sink austerity_stdio_sink
 #define stdio_source austerity_stdio_source
