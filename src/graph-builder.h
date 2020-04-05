@@ -1,8 +1,11 @@
 #ifndef GRAPH_BUILDER_H
 #define GRAPH_BUILDER_H
 
+#include "arena.h"
 #include "common.h"
 #include "environment.h"
+
+ARENA_STRUCT_DECL(environment_t);
 
 struct austerity_graph_builder {
   environment_t *default_env;
@@ -23,16 +26,13 @@ struct austerity_graph_builder {
     void *user;
   } abort_on_error;
 
-  struct env_list {
-    struct env_list *next;
-    environment_t env;
-  } * envs;
-
   struct allocator {
     void *(*alloc)(size_t, void *);
     void (*free)(void *, void *);
     void *user;
   } a;
+
+  struct ARENA_STRUCT(environment_t) * env_arena;
 };
 
 void record_einval(graph_builder_t *g, const char *api_fn_name, const char *english);

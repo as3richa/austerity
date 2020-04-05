@@ -25,7 +25,7 @@ create_graph_builder_a(void *(*alloc)(size_t, void *), void (*free)(void *, void
   g->n_taps = 0;
   g->error.errnum = 0;
   g->abort_on_error = (struct abort_on_error){0, NULL, NULL};
-  g->envs = NULL;
+  g->env_arena = NULL;
   g->a = (struct allocator){alloc, free, NULL};
 
   return g;
@@ -42,31 +42,18 @@ void graph_builder_abort_on_error_c(graph_builder_t *g,
 }
 
 void destroy_graph_builder(graph_builder_t *g) {
-  // FIXME: destroy stream processors
-  ifree(g, g->sps.ary);
-
-  for (struct env_list *it = g->envs, *next; it != NULL; it = next) {
-    next = it->next;
-    destroy_environment(&it->env);
-    ifree(g, it);
-  }
-
+  ifree(g, g->sps.ary); // FIXME: destroy stream processors
+  DESTROY_ARENA(environment_t, g, &g->env_arena, destroy_environment);
   ifree(g, g);
 }
 
 environment_t *create_environment(graph_builder_t *g) {
-  struct env_list *envs = ialloc(g, sizeof(struct env_list), __func__);
+  environment_t *env;
+  ARENA_ALLOC(environment_t, &env, g, &g->env_arena, NULL);
 
-  if (envs == NULL) {
-    return NULL;
-  }
+  printf("%p\n", env);
 
-  envs->next = g->envs;
-  g->envs = envs;
-
-  environment_t *env = &envs->env;
   initialize_environment(env, g);
-
   return env;
 }
 
