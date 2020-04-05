@@ -53,8 +53,7 @@
 #define graph_builder_abort_on_error austerity_graph_builder_abort_on_error
 #define graph_builder_abort_on_error_c austerity_graph_builder_abort_on_error_c
 #define error_t austerity_error_t
-#define DEV_NULL AUSTERITY_DEV_NULL
-#define NIL_SOURCE AUSTERITY_NIL_SOURCE
 #define argv_t austerity_argv_t
+#define create_argv_v austerity_create_argv_v
 
 #endif

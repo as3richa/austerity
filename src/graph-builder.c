@@ -26,6 +26,7 @@ create_graph_builder_a(void *(*alloc)(size_t, void *), void (*free)(void *, void
   g->error.errnum = 0;
   g->abort_on_error = (struct abort_on_error){0, NULL, NULL};
   g->env_arena = NULL;
+  g->argv_arena = NULL;
   g->a = (struct allocator){alloc, free, NULL};
 
   return g;
@@ -44,17 +45,43 @@ void graph_builder_abort_on_error_c(graph_builder_t *g,
 void destroy_graph_builder(graph_builder_t *g) {
   ifree(g, g->sps.ary); // FIXME: destroy stream processors
   DESTROY_ARENA(environment_t, g, &g->env_arena, destroy_environment);
+  DESTROY_ARENA(argv_t, g, &g->argv_arena, destroy_argv);
   ifree(g, g);
 }
 
 environment_t *create_environment(graph_builder_t *g) {
   environment_t *env;
   ARENA_ALLOC(environment_t, &env, g, &g->env_arena, NULL);
-
-  printf("%p\n", env);
-
   initialize_environment(env, g);
   return env;
+}
+
+argv_t *create_argv(graph_builder_t *g) {
+  argv_t *argv;
+  ARENA_ALLOC(argv_t, &argv, g, &g->argv_arena, NULL);
+  initialize_argv(argv, g);
+  return argv;
+}
+
+argv_t *create_argv_v(graph_builder_t *g, ...) {
+  argv_t *argv = create_argv(g);
+
+  if (argv == NULL) {
+    return NULL;
+  }
+
+  va_list v;
+  va_start(v, g);
+  const int result = argv_push_strs_va(argv, v, __func__);
+  va_end(v);
+
+  if (result < 0) {
+    destroy_argv(argv);
+    // FIXME: stick argv back on the arena??
+    return NULL;
+  }
+
+  return argv;
 }
 
 void record_einval(graph_builder_t *g, const char *api_fn_name, const char *english) {

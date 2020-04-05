@@ -4,7 +4,7 @@
 #define VEC_RESERVE_N(contained_type, g, vec, n, ret, api_fn_name)                                 \
   do {                                                                                             \
     assert((vec)->size <= (vec)->capacity);                                                        \
-    if ((vec)->size == (vec)->capacity) {                                                          \
+    if ((vec)->size + (n) > (vec)->capacity) {                                                     \
       const size_t elem_size = sizeof(contained_type);                                             \
       const size_t capacity = 2 * (vec)->capacity + (n);                                           \
       contained_type *ary =                                                                        \
@@ -15,7 +15,7 @@
       (vec)->ary = ary;                                                                            \
       (vec)->capacity = capacity;                                                                  \
     }                                                                                              \
-    assert((vec)->size < (vec)->capacity);                                                         \
+    assert((vec)->size + (n) <= (vec)->capacity);                                                  \
   } while (0)
 
 #endif

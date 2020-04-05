@@ -2,10 +2,12 @@
 #define GRAPH_BUILDER_H
 
 #include "arena.h"
+#include "commands.h"
 #include "common.h"
 #include "environment.h"
 
 ARENA_STRUCT_DECL(environment_t);
+ARENA_STRUCT_DECL(argv_t);
 
 struct austerity_graph_builder {
   environment_t *default_env;
@@ -33,6 +35,7 @@ struct austerity_graph_builder {
   } a;
 
   struct ARENA_STRUCT(environment_t) * env_arena;
+  struct ARENA_STRUCT(argv_t) * argv_arena;
 };
 
 void record_einval(graph_builder_t *g, const char *api_fn_name, const char *english);
