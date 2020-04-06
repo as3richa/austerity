@@ -1,13 +1,13 @@
-#include "common.h"
-#include "graph-builder.h"
-#include "stream-processor.h"
+#include "../common.h"
+#include "../dsl.h"
+#include "../graph-builder.h"
 
-static struct stream_processor *emplace_source(graph_builder_t *g, const char *api_fn_name);
+static stream_processor_t *emplace_source(graph_builder_t *g, const char *api_fn_name);
 
 stream_t *fd_source(graph_builder_t *g, int fd) {
   INVAL_CHECK(g, fd < 0, "fd is negative", NULL);
 
-  struct stream_processor *sp = emplace_source(g, __func__);
+  stream_processor_t *sp = emplace_source(g, __func__);
 
   if (sp == NULL) {
     return NULL;
@@ -28,7 +28,7 @@ stream_t *path_source(graph_builder_t *g, const char *path) {
     return NULL;
   }
 
-  struct stream_processor *sp = emplace_source(g, __func__);
+  stream_processor_t *sp = emplace_source(g, __func__);
 
   if (sp == NULL) {
     ifree(g, my_path);
@@ -44,7 +44,7 @@ stream_t *path_source(graph_builder_t *g, const char *path) {
 stream_t *c_file_source(graph_builder_t *g, FILE *c_file) {
   NULL_CHECK(g, c_file, NULL);
 
-  struct stream_processor *sp = emplace_source(g, __func__);
+  stream_processor_t *sp = emplace_source(g, __func__);
 
   if (sp == NULL) {
     return NULL;
@@ -73,7 +73,7 @@ stream_t *buffer_source(graph_builder_t *g, const char *buffer, size_t size) {
     return NULL;
   }
 
-  struct stream_processor *sp = emplace_source(g, __func__);
+  stream_processor_t *sp = emplace_source(g, __func__);
 
   if (sp == NULL) {
     ifree(g, my_buffer);
@@ -89,7 +89,7 @@ stream_t *buffer_source(graph_builder_t *g, const char *buffer, size_t size) {
 stream_t *static_buffer_source(graph_builder_t *g, const char *buffer, size_t size) {
   NULL_CHECK(g, buffer, NULL);
 
-  struct stream_processor *sp = emplace_source(g, __func__);
+  stream_processor_t *sp = emplace_source(g, __func__);
 
   if (sp == NULL) {
     return NULL;
@@ -101,6 +101,6 @@ stream_t *static_buffer_source(graph_builder_t *g, const char *buffer, size_t si
   return &sp->out[0];
 }
 
-static struct stream_processor *emplace_source(graph_builder_t *g, const char *api_fn_name) {
+static stream_processor_t *emplace_source(graph_builder_t *g, const char *api_fn_name) {
   return emplace_stream_processor(NULL, g, NULL, 0, 1, api_fn_name);
 }

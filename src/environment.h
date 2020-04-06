@@ -28,7 +28,7 @@ struct austerity_environment {
 
 void initialize_environment(environment_t *env, graph_builder_t *g);
 
-void destroy_environment(environment_t *env);
+void destroy_environment(graph_builder_t *g, environment_t *env);
 
 int apply_environment(error_t *err, const environment_t *env);
 

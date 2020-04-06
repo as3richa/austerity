@@ -1,23 +1,27 @@
 #ifndef GRAPH_BUILDER_H
 #define GRAPH_BUILDER_H
 
-#include "arena.h"
 #include "commands.h"
 #include "common.h"
+#include "dsl.h"
 #include "environment.h"
 
-ARENA_STRUCT_DECL(environment_t);
-ARENA_STRUCT_DECL(argv_t);
+#define NAME stream_processor_vec
+#define CONTAINED_TYPE stream_processor_t
+#include "vec.h"
+
+#define NAME env_arena
+#define CONTAINED_TYPE environment_t
+#include "arena.h"
+
+#define NAME argv_arena
+#define CONTAINED_TYPE argv_t
+#include "arena.h"
 
 struct austerity_graph_builder {
   environment_t *default_env;
 
-  struct stream_processor_vec {
-    struct stream_processor *ary;
-    size_t size;
-    size_t capacity;
-  } sps;
-
+  stream_processor_vec_t sps;
   tap_t n_taps;
 
   error_t error;
@@ -34,8 +38,8 @@ struct austerity_graph_builder {
     void *user;
   } a;
 
-  struct ARENA_STRUCT(environment_t) * env_arena;
-  struct ARENA_STRUCT(argv_t) * argv_arena;
+  env_arena_t *env_arena;
+  argv_arena_t *argv_arena;
 };
 
 void record_einval(graph_builder_t *g, const char *api_fn_name, const char *english);

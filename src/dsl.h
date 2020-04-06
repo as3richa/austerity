@@ -1,14 +1,14 @@
-#ifndef STREAM_PROCESSOR_H
-#define STREAM_PROCESSOR_H
+#ifndef DSL_H
+#define DSL_H
 
 #include "common.h"
 
+#define NAME tap_vec
+#define CONTAINED_TYPE tap_t
+#include "vec.h"
+
 struct austerity_stream {
-  struct tap_vec {
-    tap_t *ary;
-    st_size_t size;
-    st_size_t capacity;
-  } taps;
+  tap_vec_t taps;
 };
 
 struct buffer {
@@ -63,7 +63,7 @@ struct sp_function {
   size_t n_out;
 };
 
-struct stream_processor {
+typedef struct {
   enum {
     SP_FD_SOURCE,
     SP_PATH_SOURCE,
@@ -86,13 +86,13 @@ struct stream_processor {
     struct sp_command command;
     struct sp_function function;
   } u;
-};
+} stream_processor_t;
 
-struct stream_processor *emplace_stream_processor(tap_t *tap0,
-                                                  graph_builder_t *g,
-                                                  stream_t **in,
-                                                  size_t n_in,
-                                                  size_t n_out,
-                                                  const char *api_fn_name);
+stream_processor_t *emplace_stream_processor(tap_t *tap0,
+                                             graph_builder_t *g,
+                                             stream_t **in,
+                                             size_t n_in,
+                                             size_t n_out,
+                                             const char *api_fn_name);
 
 #endif

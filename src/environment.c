@@ -6,8 +6,8 @@ void initialize_environment(environment_t *env, graph_builder_t *g) {
   *env = (environment_t){g, NULL, 1, (struct un_setenv_op_vec){NULL, 0, 0}, -1, -1, -1, -1};
 }
 
-void destroy_environment(environment_t *env) {
-  graph_builder_t *g = env->g;
+void destroy_environment(graph_builder_t *g, environment_t *env) {
+  assert(g == env->g);
 
   ifree(g, env->wd);
 

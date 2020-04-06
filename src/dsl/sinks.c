@@ -1,14 +1,13 @@
-#include "common.h"
-#include "graph-builder.h"
-#include "stream-processor.h"
+#include "../common.h"
+#include "../dsl.h"
+#include "../graph-builder.h"
 
-static struct stream_processor *
-emplace_sink(graph_builder_t *g, stream_t *in, const char *api_fn_name);
+static stream_processor_t *emplace_sink(graph_builder_t *g, stream_t *in, const char *api_fn_name);
 
 int fd_sink(graph_builder_t *g, int fd, stream_t *in) {
   INVAL_CHECK(g, fd < 0, "fd is negative", -1);
 
-  struct stream_processor *sp = emplace_sink(g, in, __func__);
+  stream_processor_t *sp = emplace_sink(g, in, __func__);
 
   if (sp == NULL) {
     return -1;
@@ -29,7 +28,7 @@ int path_sink(graph_builder_t *g, const char *path, int append, stream_t *in) {
     return -1;
   }
 
-  struct stream_processor *sp = emplace_sink(g, in, __func__);
+  stream_processor_t *sp = emplace_sink(g, in, __func__);
 
   if (sp == NULL) {
     return -1;
@@ -44,7 +43,7 @@ int path_sink(graph_builder_t *g, const char *path, int append, stream_t *in) {
 int c_file_sink(graph_builder_t *g, FILE *c_file, stream_t *in) {
   NULL_CHECK(g, c_file, -1);
 
-  struct stream_processor *sp = emplace_sink(g, in, __func__);
+  stream_processor_t *sp = emplace_sink(g, in, __func__);
 
   if (sp == NULL) {
     return -1;
@@ -55,10 +54,9 @@ int c_file_sink(graph_builder_t *g, FILE *c_file, stream_t *in) {
   return 0;
 }
 
-static struct stream_processor *
-emplace_sink(graph_builder_t *g, stream_t *in, const char *api_fn_name) {
+static stream_processor_t *emplace_sink(graph_builder_t *g, stream_t *in, const char *api_fn_name) {
   tap_t tap;
-  struct stream_processor *sp = emplace_stream_processor(&tap, g, &in, 1, 0, api_fn_name);
+  stream_processor_t *sp = emplace_stream_processor(&tap, g, &in, 1, 0, api_fn_name);
 
   if (sp == NULL) {
     return NULL;

@@ -21,13 +21,14 @@ create_graph_builder_a(void *(*alloc)(size_t, void *), void (*free)(void *, void
   }
 
   g->default_env = NULL;
-  g->sps = (struct stream_processor_vec){NULL, 0, 0};
+  g->sps = (stream_processor_vec_t){NULL, 0, 0};
   g->n_taps = 0;
   g->error.errnum = 0;
   g->abort_on_error = (struct abort_on_error){0, NULL, NULL};
-  g->env_arena = NULL;
-  g->argv_arena = NULL;
+
   g->a = (struct allocator){alloc, free, NULL};
+  initialize_env_arena(&g->env_arena);
+  initialize_argv_arena(&g->argv_arena);
 
   return g;
 }
@@ -44,21 +45,29 @@ void graph_builder_abort_on_error_c(graph_builder_t *g,
 
 void destroy_graph_builder(graph_builder_t *g) {
   ifree(g, g->sps.ary); // FIXME: destroy stream processors
-  DESTROY_ARENA(environment_t, g, &g->env_arena, destroy_environment);
-  DESTROY_ARENA(argv_t, g, &g->argv_arena, destroy_argv);
+  destroy_env_arena(g, &g->env_arena, destroy_environment);
+  destroy_argv_arena(g, &g->argv_arena, destroy_argv);
   ifree(g, g);
 }
 
 environment_t *create_environment(graph_builder_t *g) {
-  environment_t *env;
-  ARENA_ALLOC(environment_t, &env, g, &g->env_arena, NULL);
+  environment_t *env = env_arena_alloc(g, &g->env_arena, __func__);
+
+  if (env == NULL) {
+    return NULL;
+  }
+
   initialize_environment(env, g);
   return env;
 }
 
 argv_t *create_argv(graph_builder_t *g) {
-  argv_t *argv;
-  ARENA_ALLOC(argv_t, &argv, g, &g->argv_arena, NULL);
+  argv_t *argv = argv_arena_alloc(g, &g->argv_arena, __func__);
+
+  if (argv == NULL) {
+    return NULL;
+  }
+
   initialize_argv(argv, g);
   return argv;
 }
@@ -76,7 +85,7 @@ argv_t *create_argv_v(graph_builder_t *g, ...) {
   va_end(v);
 
   if (result < 0) {
-    destroy_argv(argv);
+    destroy_argv(g, argv);
     // FIXME: stick argv back on the arena??
     return NULL;
   }
