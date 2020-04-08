@@ -9,6 +9,8 @@ SOURCES="$(echo src/*.c)"
 DEPFILES=""
 OBJECTS=""
 
+FMT='%s: %s\n\t$(CC) -c $(CFLAGS) -MMD -MF %s -o %s %s\ninclude %s\n\n'
+
 for SOURCE in $SOURCES; do
   OBJECT="$(echo $SOURCE | sed 's/^src\/\(.*\).c$/build\/\1.o/g')"
   DEPFILE="$(echo $SOURCE | sed 's/^src\/\(.*\).c$/build\/\1.in/g')"
@@ -21,10 +23,7 @@ for SOURCE in $SOURCES; do
     DEPFILES="$DEPFILES $DEPFILE"
   fi
 
-  echo "$OBJECT: $SOURCE" >> config.in
-  printf '\t$(CC) -c $(CFLAGS) -MMD -MF "%s" -o "$@" "$<"\n' $DEPFILE >> config.in
-  echo "include $DEPFILE" >> config.in
-
+  printf "$FMT" $OBJECT $SOURCE $DEPFILE $OBJECT $SOURCE $DEPFILE >> config.in
   touch "$DEPFILE"
 done
 

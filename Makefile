@@ -1,4 +1,6 @@
 .POSIX:
+.SUFFIXES:
+.PHONY: all clean
 
 CC = gcc
 CFLAGS = -Iinclude -std=c99 -pedantic -Wall -Wextra -DNDEBUG -O3
