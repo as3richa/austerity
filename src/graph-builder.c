@@ -1,5 +1,28 @@
 #include "graph-builder.h"
 
+struct austerity_graph_builder {
+  environment_t *default_env;
+
+  dsl_state_t dsl;
+
+  error_t error;
+
+  struct abort_on_error {
+    unsigned int active : 1;
+    void (*callback)(error_t *, void *);
+    void *user;
+  } abort_on_error;
+
+  struct allocator {
+    void *(*alloc)(size_t, void *);
+    void (*free)(void *, void *);
+    void *user;
+  } a;
+
+  env_arena_t *env_arena;
+  argv_arena_t *argv_arena;
+};
+
 static void *default_alloc(size_t size, void *user);
 static void default_free(void *ptr, void *user);
 
@@ -21,8 +44,9 @@ create_graph_builder_a(void *(*alloc)(size_t, void *), void (*free)(void *, void
   }
 
   g->default_env = NULL;
-  g->sps = (stream_processor_vec_t){NULL, 0, 0};
-  g->n_taps = 0;
+
+  initialize_dsl_state(&g->dsl);
+
   g->error.errnum = 0;
   g->abort_on_error = (struct abort_on_error){0, NULL, NULL};
 
@@ -44,32 +68,18 @@ void graph_builder_abort_on_error_c(graph_builder_t *g,
 }
 
 void destroy_graph_builder(graph_builder_t *g) {
-  ifree(g, g->sps.ary); // FIXME: destroy stream processors
-  destroy_env_arena(g, &g->env_arena, destroy_environment);
-  destroy_argv_arena(g, &g->argv_arena, destroy_argv);
+  destroy_dsl_state(g, &g->dsl);
+  destroy_env_arena(g, &g->env_arena);
+  destroy_argv_arena(g, &g->argv_arena);
   ifree(g, g);
 }
 
 environment_t *create_environment(graph_builder_t *g) {
-  environment_t *env = env_arena_alloc(g, &g->env_arena, __func__);
-
-  if (env == NULL) {
-    return NULL;
-  }
-
-  initialize_environment(env, g);
-  return env;
+  return env_arena_alloc(g, &g->env_arena, __func__);
 }
 
 argv_t *create_argv(graph_builder_t *g) {
-  argv_t *argv = argv_arena_alloc(g, &g->argv_arena, __func__);
-
-  if (argv == NULL) {
-    return NULL;
-  }
-
-  initialize_argv(argv, g);
-  return argv;
+  return argv_arena_alloc(g, &g->argv_arena, __func__);
 }
 
 argv_t *create_argv_v(graph_builder_t *g, ...) {
@@ -91,6 +101,16 @@ argv_t *create_argv_v(graph_builder_t *g, ...) {
   }
 
   return argv;
+}
+
+int set_default_environment(graph_builder_t *g, environment_t *env) {
+  if (env == NULL) {
+    record_einval(g, __func__, "env is NULL");
+    return -1;
+  }
+
+  g->default_env = env;
+  return 0;
 }
 
 void record_einval(graph_builder_t *g, const char *api_fn_name, const char *english) {
@@ -191,4 +211,8 @@ char *copy_buffer(graph_builder_t *g, const char *buffer, size_t size, const cha
 
 char *copy_str(graph_builder_t *g, const char *str, const char *api_fn_name) {
   return copy_buffer(g, str, strlen(str) + 1, api_fn_name);
+}
+
+dsl_state_t *graph_builder_dsl(graph_builder_t *g) {
+  return &g->dsl;
 }

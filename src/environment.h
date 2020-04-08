@@ -26,7 +26,7 @@ struct austerity_environment {
   gid_t rgid, egid;
 };
 
-void initialize_environment(environment_t *env, graph_builder_t *g);
+void initialize_environment(graph_builder_t *g, environment_t *env);
 
 void destroy_environment(graph_builder_t *g, environment_t *env);
 

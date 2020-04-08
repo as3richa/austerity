@@ -2,7 +2,7 @@
 #include "common.h"
 #include "graph-builder.h"
 
-void initialize_environment(environment_t *env, graph_builder_t *g) {
+void initialize_environment(graph_builder_t *g, environment_t *env) {
   *env = (environment_t){g, NULL, 1, (struct un_setenv_op_vec){NULL, 0, 0}, -1, -1, -1, -1};
 }
 
@@ -19,16 +19,6 @@ void destroy_environment(graph_builder_t *g, environment_t *env) {
   }
 
   ifree(g, ops->ary);
-}
-
-int set_default_environment(graph_builder_t *g, environment_t *env) {
-  if (env == NULL) {
-    record_einval(g, __func__, "env is NULL");
-    return -1;
-  }
-
-  g->default_env = env;
-  return 0;
 }
 
 int environment_setwd(environment_t *env, const char *path) {

@@ -27,16 +27,12 @@ static __attribute__((unused)) void L(initialize)(TYPE *vec) {
   *vec = (TYPE){NULL, 0, 0};
 }
 
-static __attribute__((unused)) void
-L(destroy)(graph_builder_t *g, TYPE *vec, void (*destructor)(graph_builder_t *, CONTAINED_TYPE *)) {
-  if (destructor == NULL) {
-    ifree(g, vec->ary);
-    return;
-  }
-
+static __attribute__((unused)) void L(destroy)(graph_builder_t *g, TYPE *vec) {
+#ifdef DESTRUCTOR
   for (size_t i = 0; i < vec->size; i++) {
-    (*destructor)(g, &vec->ary[i]);
+    DESTRUCTOR(g, &vec->ary[i]);
   }
+#endif
 
   ifree(g, vec->ary);
 }
@@ -94,4 +90,11 @@ static __attribute__((unused)) void M(pop)(TYPE *vec) {
 
 #undef NAME
 #undef CONTAINED_TYPE
+#undef CONSTRUCTOR
+#undef DESTRUCTOR
+
+#undef PASTE2
+#undef PASTE
+#undef L
+#undef M
 #undef TYPE

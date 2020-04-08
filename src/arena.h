@@ -23,12 +23,13 @@ static __attribute__((unused)) void L(initialize)(TYPE **arena) {
   *arena = NULL;
 }
 
-static __attribute__((unused)) void L(destroy)(
-    graph_builder_t *g, TYPE **arena, void (*destructor)(graph_builder_t *, CONTAINED_TYPE *)) {
+static __attribute__((unused)) void L(destroy)(graph_builder_t *g, TYPE **arena) {
   for (TYPE *it = *arena, *next; it != NULL; it = next) {
+#ifdef DESTRUCTOR
     for (size_t i = 0; i < it->size; i++) {
-      (*destructor)(g, &it->ary[i]);
+      DESTRUCTOR(g, &it->ary[i]);
     }
+#endif
 
     next = it->next;
     ifree(g, it);
@@ -63,9 +64,25 @@ M(alloc)(graph_builder_t *g, TYPE **arena_ref, const char *api_fn_name) {
   }
 
   assert(arena != NULL && arena->size < arena->capacity);
-  return &arena->ary[arena->size++];
+
+  CONTAINED_TYPE *elem = &arena->ary[arena->size++];
+
+#ifdef CONSTRUCTOR
+  CONSTRUCTOR(g, elem);
+#endif
+
+  return elem;
 }
+
+#undef HEADER
 
 #undef NAME
 #undef CONTAINED_TYPE
+#undef CONSTRUCTOR
+#undef DESTRUCTOR
+
+#undef PASTE2
+#undef PASTE
+#undef L
+#undef M
 #undef TYPE

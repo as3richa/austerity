@@ -102,5 +102,5 @@ stream_t *static_buffer_source(graph_builder_t *g, const char *buffer, size_t si
 }
 
 static stream_processor_t *emplace_source(graph_builder_t *g, const char *api_fn_name) {
-  return emplace_stream_processor(NULL, g, NULL, 0, 1, api_fn_name);
+  return emplace_stream_processor(g, NULL, NULL, 0, 1, api_fn_name);
 }

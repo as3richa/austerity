@@ -56,7 +56,7 @@ int c_file_sink(graph_builder_t *g, FILE *c_file, stream_t *in) {
 
 static stream_processor_t *emplace_sink(graph_builder_t *g, stream_t *in, const char *api_fn_name) {
   tap_t tap;
-  stream_processor_t *sp = emplace_stream_processor(&tap, g, &in, 1, 0, api_fn_name);
+  stream_processor_t *sp = emplace_stream_processor(g, &tap, &in, 1, 0, api_fn_name);
 
   if (sp == NULL) {
     return NULL;

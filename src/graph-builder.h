@@ -1,46 +1,22 @@
 #ifndef GRAPH_BUILDER_H
 #define GRAPH_BUILDER_H
 
-#include "commands.h"
+#include "argv.h"
 #include "common.h"
 #include "dsl.h"
 #include "environment.h"
 
-#define NAME stream_processor_vec
-#define CONTAINED_TYPE stream_processor_t
-#include "vec.h"
-
 #define NAME env_arena
 #define CONTAINED_TYPE environment_t
+#define CONSTRUCTOR initialize_environment
+#define DESTRUCTOR destroy_environment
 #include "arena.h"
 
 #define NAME argv_arena
 #define CONTAINED_TYPE argv_t
+#define CONSTRUCTOR initialize_argv
+#define DESTRUCTOR destroy_argv
 #include "arena.h"
-
-struct austerity_graph_builder {
-  environment_t *default_env;
-
-  stream_processor_vec_t sps;
-  tap_t n_taps;
-
-  error_t error;
-
-  struct abort_on_error {
-    unsigned int active : 1;
-    void (*callback)(error_t *, void *);
-    void *user;
-  } abort_on_error;
-
-  struct allocator {
-    void *(*alloc)(size_t, void *);
-    void (*free)(void *, void *);
-    void *user;
-  } a;
-
-  env_arena_t *env_arena;
-  argv_arena_t *argv_arena;
-};
 
 void record_einval(graph_builder_t *g, const char *api_fn_name, const char *english);
 
@@ -66,5 +42,7 @@ void ifree(graph_builder_t *g, void *ptr);
 char *copy_buffer(graph_builder_t *g, const char *buffer, size_t size, const char *api_fn_name);
 
 char *copy_str(graph_builder_t *g, const char *str, const char *api_fn_name);
+
+dsl_state_t *graph_builder_dsl(graph_builder_t *g);
 
 #endif
