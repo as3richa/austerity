@@ -1,3 +1,4 @@
+#include "alloc.h"
 #include "common.h"
 
 #define PASTE2(x, y) x##y
@@ -34,13 +35,13 @@ static __attribute__((unused)) void L(destroy)(graph_builder_t *g, TYPE *vec) {
 }
 
 static __attribute__((unused)) CONTAINED_TYPE *
-M(emplace_n)(graph_builder_t *g, TYPE *vec, size_t n, const char *api_fn_name) {
+M(emplace_n)(graph_builder_t *g, TYPE *vec, size_t n, const char *call) {
   assert(vec->size <= vec->capacity);
 
   if (vec->size + n > vec->capacity) {
     const size_t capacity = n + vec->capacity + (vec->capacity >> 1);
     CONTAINED_TYPE *ary =
-        irealloc(g, vec->ary, sizeof(CONTAINED_TYPE), capacity, vec->capacity, api_fn_name);
+        irealloc(g, vec->ary, sizeof(CONTAINED_TYPE), capacity, vec->capacity, call);
 
     if (ary == NULL) {
       return NULL;
@@ -59,13 +60,13 @@ M(emplace_n)(graph_builder_t *g, TYPE *vec, size_t n, const char *api_fn_name) {
 }
 
 static __attribute__((unused)) CONTAINED_TYPE *
-M(emplace)(graph_builder_t *g, TYPE *vec, const char *api_fn_name) {
-  return M(emplace_n)(g, vec, 1, api_fn_name);
+M(emplace)(graph_builder_t *g, TYPE *vec, const char *call) {
+  return M(emplace_n)(g, vec, 1, call);
 }
 
 static __attribute__((unused)) int
-M(push)(graph_builder_t *g, TYPE *vec, CONTAINED_TYPE value, const char *api_fn_name) {
-  CONTAINED_TYPE *ptr = M(emplace)(g, vec, api_fn_name);
+M(push)(graph_builder_t *g, TYPE *vec, CONTAINED_TYPE value, const char *call) {
+  CONTAINED_TYPE *ptr = M(emplace)(g, vec, call);
 
   if (ptr == NULL) {
     return -1;

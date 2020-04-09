@@ -1,8 +1,9 @@
 #include "common.h"
 #include "dsl.h"
+#include "errors.h"
 #include "graph-builder.h"
 
-static stream_processor_t *emplace_source(graph_builder_t *g, const char *api_fn_name);
+static stream_processor_t *emplace_source(graph_builder_t *g, const char *call);
 
 stream_t *fd_source(graph_builder_t *g, int fd) {
   INVAL_CHECK(g, fd < 0, "fd is negative", NULL);
@@ -101,6 +102,6 @@ stream_t *static_buffer_source(graph_builder_t *g, const char *buffer, size_t si
   return &sp->out[0];
 }
 
-static stream_processor_t *emplace_source(graph_builder_t *g, const char *api_fn_name) {
-  return emplace_stream_processor(g, NULL, NULL, 0, 1, api_fn_name);
+static stream_processor_t *emplace_source(graph_builder_t *g, const char *call) {
+  return emplace_stream_processor(g, NULL, NULL, 0, 1, call);
 }

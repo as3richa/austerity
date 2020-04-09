@@ -1,9 +1,17 @@
 #include "environment.h"
+#include "alloc.h"
 #include "common.h"
-#include "graph-builder.h"
+#include "errors.h"
 
-void initialize_environment(graph_builder_t *g, environment_t *env) {
+environment_t *create_environment(graph_builder_t *g) {
+  environment_t *env = alloc_env(g, __func__);
+
+  if (env == NULL) {
+    return NULL;
+  }
+
   *env = (environment_t){g, NULL, 1, (struct un_setenv_op_vec){NULL, 0, 0}, -1, -1, -1, -1};
+  return env;
 }
 
 void destroy_environment(graph_builder_t *g, environment_t *env) {
@@ -60,7 +68,7 @@ int environment_clearenv(environment_t *env) {
   return 0;
 }
 
-struct un_setenv_op *emplace_un_setenv_op(environment_t *env, const char *api_fn_name) {
+struct un_setenv_op *emplace_un_setenv_op(environment_t *env, const char *call) {
   struct un_setenv_op_vec *ops = &env->un_setenv_ops;
 
   assert(ops->size <= ops->capacity);
@@ -69,8 +77,7 @@ struct un_setenv_op *emplace_un_setenv_op(environment_t *env, const char *api_fn
     const size_t capacity = 2 * ops->capacity + 1;
     const size_t elem_size = sizeof(struct un_setenv_op);
 
-    struct un_setenv_op *ary =
-        irealloc(env->g, ops->ary, elem_size, capacity, ops->capacity, api_fn_name);
+    struct un_setenv_op *ary = irealloc(env->g, ops->ary, elem_size, capacity, ops->capacity, call);
 
     if (ary == NULL) {
       return NULL;

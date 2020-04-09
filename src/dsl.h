@@ -26,11 +26,7 @@ typedef struct {
 void initialize_dsl_state(dsl_state_t *dsl);
 void destroy_dsl_state(graph_builder_t *g, dsl_state_t *dsl);
 
-stream_processor_t *emplace_stream_processor(graph_builder_t *g,
-                                             tap_t *tap0,
-                                             stream_t **in,
-                                             size_t n_in,
-                                             size_t n_out,
-                                             const char *api_fn_name);
+stream_processor_t *emplace_stream_processor(
+    graph_builder_t *g, tap_t *tap0, stream_t **in, size_t n_in, size_t n_out, const char *call);
 
 #endif

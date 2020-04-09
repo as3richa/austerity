@@ -44,15 +44,9 @@ struct sp_command {
 };
 
 struct sp_function {
-  environment_t *env;
-
-  function_t *fn;
-  const char *name;
-  void *context;
-
+  austerity_func_t *func;
   tap_t *in;
   size_t n_in;
-  size_t n_out;
 };
 
 typedef struct {

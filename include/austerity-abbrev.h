@@ -41,7 +41,6 @@
 #define function_needs_path_out_m austerity_function_needs_path_out_m
 #define function_set_environment austerity_function_set_environment
 #define function_set_user_data austerity_function_set_user_data
-#define function_t austerity_function_t
 #define graph_builder_t austerity_graph_builder_t
 #define io_param_sink austerity_io_param_sink
 #define io_param_source austerity_io_param_source
@@ -57,5 +56,6 @@
 #define argv_t austerity_argv_t
 #define create_argv_v austerity_create_argv_v
 #define command_e austerity_command_e
+#define func_t austerity_func_t
 
 #endif

@@ -23,15 +23,11 @@ void destroy_dsl_state(graph_builder_t *g, dsl_state_t *dsl) {
   destroy_sp_vec(g, &dsl->sps);
 }
 
-stream_processor_t *emplace_stream_processor(graph_builder_t *g,
-                                             tap_t *tap0,
-                                             stream_t **in,
-                                             size_t n_in,
-                                             size_t n_out,
-                                             const char *api_fn_name) {
-  dsl_state_t *dsl = graph_builder_dsl(g);
+stream_processor_t *emplace_stream_processor(
+    graph_builder_t *g, tap_t *tap0, stream_t **in, size_t n_in, size_t n_out, const char *call) {
+  dsl_state_t *dsl = &g->dsl;
 
-  stream_t *out = ialloc(g, sizeof(stream_t) * n_out, api_fn_name);
+  stream_t *out = ialloc(g, sizeof(stream_t) * n_out, call);
 
   if (out == NULL) {
     return NULL;
@@ -41,7 +37,7 @@ stream_processor_t *emplace_stream_processor(graph_builder_t *g,
     initialize_tap_vec(&out[i].taps);
   }
 
-  stream_processor_t *sp = sp_vec_emplace(g, &dsl->sps, api_fn_name);
+  stream_processor_t *sp = sp_vec_emplace(g, &dsl->sps, call);
 
   if (sp == NULL) {
     ifree(g, out);
@@ -49,7 +45,7 @@ stream_processor_t *emplace_stream_processor(graph_builder_t *g,
   }
 
   for (size_t i = 0; i < n_in; i++) {
-    if (tap_vec_push(g, &in[i]->taps, dsl->n_taps + i, api_fn_name) < 0) {
+    if (tap_vec_push(g, &in[i]->taps, dsl->n_taps + i, call) < 0) {
       // FIXME: ???
       return NULL;
     }

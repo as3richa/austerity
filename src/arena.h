@@ -1,3 +1,4 @@
+#include "alloc.h"
 #include "common.h"
 
 #define PASTE2(x, y) x##y
@@ -13,11 +14,6 @@ typedef struct NAME {
   struct NAME *next;
   CONTAINED_TYPE ary[];
 } TYPE;
-
-// FIXME: gross
-
-void *ialloc(graph_builder_t *g, size_t size, const char *api_fn_name);
-void ifree(graph_builder_t *g, void *ptr);
 
 static __attribute__((unused)) void L(initialize)(TYPE **arena) {
   *arena = NULL;
@@ -37,7 +33,7 @@ static __attribute__((unused)) void L(destroy)(graph_builder_t *g, TYPE **arena)
 }
 
 static __attribute__((unused)) CONTAINED_TYPE *
-M(alloc)(graph_builder_t *g, TYPE **arena_ref, const char *api_fn_name) {
+M(alloc)(graph_builder_t *g, TYPE **arena_ref, const char *call) {
   TYPE *arena = *arena_ref;
   assert(arena == NULL || arena->size <= arena->capacity);
 
@@ -53,7 +49,7 @@ M(alloc)(graph_builder_t *g, TYPE **arena_ref, const char *api_fn_name) {
     const size_t size = sizeof(TYPE) + sizeof(CONTAINED_TYPE) * capacity;
 
     TYPE *next = arena;
-    arena = ialloc(g, size, api_fn_name);
+    arena = ialloc(g, size, call);
 
     if (arena == NULL) {
       return NULL;

@@ -1,8 +1,9 @@
 #include "common.h"
 #include "dsl.h"
+#include "errors.h"
 #include "graph-builder.h"
 
-static stream_processor_t *emplace_sink(graph_builder_t *g, stream_t *in, const char *api_fn_name);
+static stream_processor_t *emplace_sink(graph_builder_t *g, stream_t *in, const char *call);
 
 int fd_sink(graph_builder_t *g, int fd, stream_t *in) {
   INVAL_CHECK(g, fd < 0, "fd is negative", -1);
@@ -55,9 +56,9 @@ int c_file_sink(graph_builder_t *g, FILE *c_file, stream_t *in) {
   return 0;
 }
 
-static stream_processor_t *emplace_sink(graph_builder_t *g, stream_t *in, const char *api_fn_name) {
+static stream_processor_t *emplace_sink(graph_builder_t *g, stream_t *in, const char *call) {
   tap_t tap;
-  stream_processor_t *sp = emplace_stream_processor(g, &tap, &in, 1, 0, api_fn_name);
+  stream_processor_t *sp = emplace_stream_processor(g, &tap, &in, 1, 0, call);
 
   if (sp == NULL) {
     return NULL;

@@ -1,4 +1,6 @@
 #include "argv.h"
+#include "alloc.h"
+#include "errors.h"
 #include "graph-builder.h"
 
 union argv_arg {
@@ -14,7 +16,43 @@ static void destroy_arg(graph_builder_t *g, argv_arg_t *arg);
 #define DESTRUCTOR destroy_arg
 #include "vec.h"
 
-static int push_str(argv_t *argv, const char *arg, const char *api_fn_name);
+static int push_str(argv_t *argv, const char *arg, const char *call);
+
+argv_t *create_argv(graph_builder_t *g) {
+  argv_t *argv = alloc_argv(g, __func__);
+
+  if (argv == NULL) {
+    return NULL;
+  }
+
+  argv->g = g;
+  initialize_argv_vec(&argv->args);
+
+  return argv;
+}
+
+argv_t *create_argv_v(graph_builder_t *g, ... /* const char * */) {
+  argv_t *argv = alloc_argv(g, __func__);
+
+  if (argv == NULL) {
+    return NULL;
+  }
+
+  argv->g = g;
+  initialize_argv_vec(&argv->args);
+
+  va_list v;
+  va_start(v, g);
+  const int result = argv_push_strs_va(argv, v, __func__);
+  va_end(v);
+
+  if (result < 0) {
+    destroy_argv(g, argv);
+    return NULL;
+  }
+
+  return argv;
+}
 
 void initialize_argv(graph_builder_t *g, argv_t *argv) {
   argv->g = g;
@@ -48,6 +86,7 @@ int argv_push_strs(argv_t *argv, char **const args, size_t n_args) {
   for (size_t i = 0; i < n_args; i++) {
     char *my_arg = copy_str(g, args[i], __func__);
 
+    // FIXME: here and elsewhere, deallocate intermediate resources on error
     if (my_arg == NULL) {
       argv_vec_pop_n(&argv->args, n_args - i);
       return -1;
@@ -67,18 +106,9 @@ int argv_push_strs_v(argv_t *argv, ...) {
   return result;
 }
 
-int argv_push_stream(argv_t *argv, stream_t *in);
+int argv_push_stream(argv_t *argv, stream_t *in); // FIXME
 
-stream_t *command(graph_builder_t *g, const char *path, argv_t *argv, stream_t *stdin);
-
-stream_t *command_e(stream_t **stderr,
-                    graph_builder_t *g,
-                    const char *path,
-                    argv_t *argv,
-                    environment_t *env,
-                    stream_t *stdin);
-
-int argv_push_strs_va(austerity_argv_t *argv, va_list v, const char *api_fn_name) {
+int argv_push_strs_va(argv_t *argv, va_list v, const char *call) {
   for (;;) {
     const char *arg = va_arg(v, const char *);
 
@@ -86,24 +116,24 @@ int argv_push_strs_va(austerity_argv_t *argv, va_list v, const char *api_fn_name
       return 0;
     }
 
-    if (push_str(argv, arg, api_fn_name) < 0) {
+    if (push_str(argv, arg, call) < 0) {
       return -1;
     }
   }
 }
 
-static int push_str(argv_t *argv, const char *arg, const char *api_fn_name) {
+static int push_str(argv_t *argv, const char *arg, const char *call) {
   graph_builder_t *g = argv->g;
 
   NULL_CHECK(g, arg, -1);
 
-  char *my_arg = copy_str(g, arg, api_fn_name);
+  char *my_arg = copy_str(g, arg, call);
 
   if (my_arg == NULL) {
     return -1;
   }
 
-  argv_arg_t *dest = argv_vec_emplace(g, &argv->args, api_fn_name);
+  argv_arg_t *dest = argv_vec_emplace(g, &argv->args, call);
 
   if (dest == NULL) {
     ifree(g, my_arg);
