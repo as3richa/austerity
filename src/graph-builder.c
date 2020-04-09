@@ -1,5 +1,19 @@
+#include "argv.h"
+#include "environment.h"
 #include "graph-builder.h"
 #include "common.h"
+
+#define NAME env_arena
+#define CONTAINED_TYPE environment_t
+#define CONSTRUCTOR initialize_environment
+#define DESTRUCTOR destroy_environment
+#include "arena.h"
+
+#define NAME argv_arena
+#define CONTAINED_TYPE argv_t
+#define CONSTRUCTOR initialize_argv
+#define DESTRUCTOR destroy_argv
+#include "arena.h"
 
 struct austerity_graph_builder {
   environment_t *default_env;

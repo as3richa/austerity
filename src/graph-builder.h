@@ -1,22 +1,8 @@
 #ifndef GRAPH_BUILDER_H
 #define GRAPH_BUILDER_H
 
-#include "argv.h"
 #include "common.h"
 #include "dsl.h"
-#include "environment.h"
-
-#define NAME env_arena
-#define CONTAINED_TYPE environment_t
-#define CONSTRUCTOR initialize_environment
-#define DESTRUCTOR destroy_environment
-#include "arena.h"
-
-#define NAME argv_arena
-#define CONTAINED_TYPE argv_t
-#define CONSTRUCTOR initialize_argv
-#define DESTRUCTOR destroy_argv
-#include "arena.h"
 
 void record_einval(graph_builder_t *g, const char *api_fn_name, const char *english);
 

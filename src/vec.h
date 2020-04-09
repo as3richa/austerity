@@ -19,16 +19,6 @@ typedef struct {
 
 #ifndef TYPE_ONLY
 
-// FIXME: gross
-
-void *irealloc(graph_builder_t *g,
-               void *ptr,
-               size_t elem_size,
-               size_t size,
-               size_t prev,
-               const char *api_fn_name);
-void ifree(graph_builder_t *g, void *ptr);
-
 static __attribute__((unused)) void L(initialize)(TYPE *vec) {
   *vec = (TYPE){NULL, 0, 0};
 }
