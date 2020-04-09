@@ -29,7 +29,8 @@
 #define fd_sink austerity_fd_sink
 #define fd_source austerity_fd_source
 #define file_sink austerity_file_sink
-#define file_source austerity_file_source
+#define path_source austerity_path_source
+#define c_file_sink austerity_c_file_sink
 #define fn_io_t austerity_fn_io_t
 #define function austerity_function
 #define function_builder_t austerity_function_builder_t

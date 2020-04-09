@@ -7,11 +7,17 @@
 #define M(id) PASTE(PASTE(NAME, _), id)
 #define TYPE M(t)
 
+#ifndef METHODS_ONLY
+
 typedef struct {
   CONTAINED_TYPE *ary;
   st_size_t size;
   st_size_t capacity;
 } TYPE;
+
+#endif
+
+#ifndef TYPE_ONLY
 
 // FIXME: gross
 
@@ -87,6 +93,11 @@ static __attribute__((unused)) void M(pop_n)(TYPE *vec, size_t n) {
 static __attribute__((unused)) void M(pop)(TYPE *vec) {
   M(pop_n)(vec, 1);
 }
+
+#endif
+
+#undef TYPE_ONLY
+#undef METHODS_ONLY
 
 #undef NAME
 #undef CONTAINED_TYPE

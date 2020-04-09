@@ -3,16 +3,11 @@
 
 #include "common.h"
 
-typedef union {
-  char *str;
-  stream_t *stream;
-} argv_arg_t;
+typedef union argv_arg argv_arg_t;
 
-void destroy_arg(graph_builder_t *g, argv_arg_t *arg);
-
+#define TYPE_ONLY
 #define NAME argv_vec
 #define CONTAINED_TYPE argv_arg_t
-#define DESTRUCTOR destroy_arg
 #include "vec.h"
 
 struct austerity_argv {

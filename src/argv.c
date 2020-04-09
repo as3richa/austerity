@@ -1,6 +1,19 @@
 #include "argv.h"
 #include "graph-builder.h"
 
+union argv_arg {
+  char *str;
+  stream_t *stream;
+};
+
+static void destroy_arg(graph_builder_t *g, argv_arg_t *arg);
+
+#define METHODS_ONLY
+#define NAME argv_vec
+#define CONTAINED_TYPE argv_arg_t
+#define DESTRUCTOR destroy_arg
+#include "vec.h"
+
 static int push_str(argv_t *argv, const char *arg, const char *api_fn_name);
 
 void initialize_argv(graph_builder_t *g, argv_t *argv) {
@@ -99,4 +112,8 @@ static int push_str(argv_t *argv, const char *arg, const char *api_fn_name) {
 
   dest->str = my_arg;
   return 0;
+}
+
+static void destroy_arg(graph_builder_t *g, argv_arg_t *arg) {
+  ifree(g, arg->str);
 }

@@ -16,6 +16,4 @@
 typedef uint_least32_t st_size_t;
 #define ST_SIZE_MAX UINT_LEAST32_MAX
 
-typedef st_size_t tap_t;
-
 #endif

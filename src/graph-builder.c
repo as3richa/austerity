@@ -1,4 +1,5 @@
 #include "graph-builder.h"
+#include "common.h"
 
 struct austerity_graph_builder {
   environment_t *default_env;

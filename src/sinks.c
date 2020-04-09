@@ -49,6 +49,7 @@ int c_file_sink(graph_builder_t *g, FILE *c_file, stream_t *in) {
     return -1;
   }
 
+  sp->type = SP_C_FILE_SINK;
   sp->u.sink.u.c_file = c_file;
 
   return 0;
