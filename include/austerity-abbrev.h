@@ -55,5 +55,6 @@
 #define error_t austerity_error_t
 #define argv_t austerity_argv_t
 #define create_argv_v austerity_create_argv_v
+#define command_e austerity_command_e
 
 #endif

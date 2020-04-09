@@ -216,3 +216,7 @@ char *copy_str(graph_builder_t *g, const char *str, const char *api_fn_name) {
 dsl_state_t *graph_builder_dsl(graph_builder_t *g) {
   return &g->dsl;
 }
+
+environment_t *graph_builder_default_env(graph_builder_t *g) {
+  return g->default_env;
+}
