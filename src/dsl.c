@@ -1,4 +1,5 @@
 #include "dsl.h"
+#include "func.h"
 #include "graph-builder.h"
 
 #define METHODS_ONLY
@@ -31,6 +32,12 @@ stream_processor_t *emplace_stream_processor(graph_builder_t *g,
                                              const char *call) {
   dsl_state_t *dsl = &g->dsl;
 
+  for (size_t i = 0; i < n_in; i++) {
+    if (tap_vec_reserve(g, &in[i]->taps, 1, call) < 0) {
+      return NULL;
+    }
+  }
+
   stream_t *out = ialloc(g, sizeof(stream_t) * n_out, call);
 
   if (out == NULL) {
@@ -49,13 +56,12 @@ stream_processor_t *emplace_stream_processor(graph_builder_t *g,
   }
 
   for (size_t i = 0; i < n_in; i++) {
-    if (tap_vec_push(g, &in[i]->taps, dsl->n_taps + i, call) < 0) {
-      // FIXME: ???
-      return NULL;
-    }
+    const int result = tap_vec_push(g, &in[i]->taps, dsl->n_taps + i, call);
+    assert(result == 0);
+    (void)result;
   }
 
-  if (n_in != 0) {
+  if (n_in > 0) {
     *tap0 = dsl->n_taps;
     dsl->n_taps += n_in;
   }
@@ -87,6 +93,10 @@ static void destroy_stream_processor(graph_builder_t *g, stream_processor_t *sp)
   case SP_COMMAND:
     ifree(g, sp->u.command.path);
     n_out = 2;
+    break;
+
+  case SP_FUNCTION:
+    n_out = sp->u.function.func->n_out;
     break;
 
   case SP_FD_SOURCE:

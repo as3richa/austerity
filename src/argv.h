@@ -3,11 +3,11 @@
 
 #include "common.h"
 
-typedef union argv_arg argv_arg_t;
+union argv_arg;
 
 #define TYPE_ONLY
 #define NAME argv_vec
-#define CONTAINED_TYPE argv_arg_t
+#define CONTAINED_TYPE union argv_arg
 #include "vec.h"
 
 struct austerity_argv {

@@ -34,34 +34,35 @@ static __attribute__((unused)) void L(destroy)(graph_builder_t *g, TYPE *vec) {
   ifree(g, vec->ary);
 }
 
-static __attribute__((unused)) CONTAINED_TYPE *
-M(emplace_n)(graph_builder_t *g, TYPE *vec, size_t n, const char *call) {
+static __attribute__((unused)) int
+M(reserve)(graph_builder_t *g, TYPE *vec, size_t n, const char *call) {
   assert(vec->size <= vec->capacity);
 
   if (vec->size + n > vec->capacity) {
-    const size_t capacity = n + vec->capacity + (vec->capacity >> 1);
+    const size_t capacity = 1 + vec->capacity + (vec->capacity >> 1);
     CONTAINED_TYPE *ary =
         irealloc(g, vec->ary, sizeof(CONTAINED_TYPE), capacity, vec->capacity, call);
 
     if (ary == NULL) {
-      return NULL;
+      return -1;
     }
 
     vec->ary = ary;
     vec->capacity = capacity;
   }
 
-  const size_t index = vec->size;
-
-  vec->size += n;
-  assert(vec->size <= vec->capacity);
-
-  return &vec->ary[index];
+  assert(vec->size + n <= vec->capacity);
+  return 0;
 }
 
 static __attribute__((unused)) CONTAINED_TYPE *
 M(emplace)(graph_builder_t *g, TYPE *vec, const char *call) {
-  return M(emplace_n)(g, vec, 1, call);
+  if (M(reserve(g, vec, 1, call)) < 0) {
+    return NULL;
+  }
+
+  assert(vec->size < vec->capacity);
+  return &vec->ary[vec->size++];
 }
 
 static __attribute__((unused)) int
@@ -76,13 +77,22 @@ M(push)(graph_builder_t *g, TYPE *vec, CONTAINED_TYPE value, const char *call) {
   return 0;
 }
 
-static __attribute__((unused)) void M(pop_n)(TYPE *vec, size_t n) {
+static __attribute__((unused)) void M(pop_n)(graph_builder_t *g, TYPE *vec, size_t n) {
   assert(vec->size >= n);
+
+#ifdef DESTRUCTOR
+  for (size_t i = 1; i <= n; i++) {
+    DESTRUCTOR(g, &vec->ary[vec->size - i]);
+  }
+#else
+  (void)g;
+#endif
+
   vec->size -= n;
 }
 
-static __attribute__((unused)) void M(pop)(TYPE *vec) {
-  M(pop_n)(vec, 1);
+static __attribute__((unused)) void M(pop)(graph_builder_t *g, TYPE *vec) {
+  M(pop_n)(g, vec, 1);
 }
 
 #endif
