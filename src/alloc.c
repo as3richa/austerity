@@ -2,10 +2,7 @@
 #include "argv.h"
 #include "environment.h"
 #include "errors.h"
-
-struct austerity_func {
-  int x;
-};
+#include "func.h"
 
 #include "graph-builder.h"
 
@@ -22,7 +19,7 @@ struct austerity_func {
 
 #define NAME func_arena
 #define CONTAINED_TYPE func_t
-#undef DESTRUCTOR // FIXME
+#define DESTRUCTOR destroy_func
 #include "arena.h"
 
 void initialize_allocator(struct allocator *a,

@@ -18,6 +18,4 @@ struct austerity_argv {
 void initialize_argv(graph_builder_t *g, argv_t *argv);
 void destroy_argv(graph_builder_t *g, argv_t *argv);
 
-int argv_push_strs_va(austerity_argv_t *argv, va_list v, const char *call);
-
 #endif

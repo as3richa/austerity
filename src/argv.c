@@ -17,6 +17,7 @@ static void destroy_arg(graph_builder_t *g, argv_arg_t *arg);
 #include "vec.h"
 
 static int push_str(argv_t *argv, const char *arg, const char *call);
+static int argv_push_strs_va(argv_t *argv, va_list v, const char *call);
 
 argv_t *create_argv(graph_builder_t *g) {
   argv_t *argv = alloc_argv(g, __func__);

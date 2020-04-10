@@ -44,8 +44,10 @@ struct sp_command {
 };
 
 struct sp_function {
+  environment_t *env;
   austerity_func_t *func;
-  tap_t *in;
+  void *user;
+  tap_t tap0;
   size_t n_in;
 };
 
@@ -61,7 +63,8 @@ typedef struct {
     SP_FD_SINK,
     SP_PATH_SINK,
     SP_C_FILE_SINK,
-    SP_COMMAND
+    SP_COMMAND,
+    SP_FUNCTION
   } type;
 
   stream_t *out;

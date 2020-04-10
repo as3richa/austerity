@@ -23,8 +23,12 @@ void destroy_dsl_state(graph_builder_t *g, dsl_state_t *dsl) {
   destroy_sp_vec(g, &dsl->sps);
 }
 
-stream_processor_t *emplace_stream_processor(
-    graph_builder_t *g, tap_t *tap0, stream_t **in, size_t n_in, size_t n_out, const char *call) {
+stream_processor_t *emplace_stream_processor(graph_builder_t *g,
+                                             tap_t *tap0,
+                                             stream_t *const *in,
+                                             size_t n_in,
+                                             size_t n_out,
+                                             const char *call) {
   dsl_state_t *dsl = &g->dsl;
 
   stream_t *out = ialloc(g, sizeof(stream_t) * n_out, call);
