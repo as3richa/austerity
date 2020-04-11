@@ -3,7 +3,15 @@
 
 #include "common.h"
 
-struct allocator;
+struct allocator {
+  void *(*alloc)(void *, size_t);
+  void (*free)(void *, void *);
+  void *user;
+
+  struct argv_arena *argv_arena;
+  struct env_arena *env_arena;
+  struct func_arena *func_arena;
+};
 
 void initialize_allocator(struct allocator *a,
                           void *(*alloc)(void *, size_t),

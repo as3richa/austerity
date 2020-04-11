@@ -17,7 +17,7 @@ create_graph_builder_a(void *(*alloc)(void *, size_t), void (*free)(void *, void
   }
 
   g->default_env = NULL;
-  initialize_dsl_state(&g->dsl);
+  initialize_graph(&g->gr);
   initialize_errors(&g->err);
   initialize_allocator(&g->a, alloc, free, user);
 
@@ -25,7 +25,7 @@ create_graph_builder_a(void *(*alloc)(void *, size_t), void (*free)(void *, void
 }
 
 void destroy_graph_builder(graph_builder_t *g) {
-  destroy_dsl_state(g, &g->dsl);
+  destroy_graph(g, &g->gr);
   destroy_allocator(g, &g->a);
   ifree(g, g);
 }

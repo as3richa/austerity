@@ -1,6 +1,7 @@
 #include "common.h"
-#include "dsl.h"
 #include "graph-builder.h"
+#include "graph.h"
+#include "stream-processor.h"
 
 static stream_t *my_command_e(graph_builder_t *g,
                               stream_t **stderr,

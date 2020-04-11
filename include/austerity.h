@@ -102,7 +102,9 @@ int austerity_argv_push_strs(austerity_argv_t *argv, char **const arg, size_t n_
 
 int austerity_argv_push_strs_v(austerity_argv_t *argv, ... /* const char * */);
 
-int austerity_argv_push_source(austerity_argv_t *argv, austerity_stream_t *in);
+int austerity_argv_push_input(austerity_argv_t *argv, austerity_stream_t *in);
+
+austerity_stream_t *austerity_argv_push_output(austerity_argv_t *argv);
 
 austerity_stream_t *austerity_command(austerity_graph_builder_t *g,
                                       const char *path,

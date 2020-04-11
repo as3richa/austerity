@@ -1,11 +1,7 @@
-#include "dsl.h"
 #include "func.h"
 #include "graph-builder.h"
-
-#define METHODS_ONLY
-#define NAME tap_vec
-#define CONTAINED_TYPE tap_t
-#include "vec.h"
+#include "stream-processor.h"
+#include "stream.h"
 
 static void destroy_stream_processor(graph_builder_t *g, stream_processor_t *sp);
 
@@ -15,13 +11,15 @@ static void destroy_stream_processor(graph_builder_t *g, stream_processor_t *sp)
 #define DESTRUCTOR destroy_stream_processor
 #include "vec.h"
 
-void initialize_dsl_state(dsl_state_t *dsl) {
-  initialize_sp_vec(&dsl->sps);
-  dsl->n_taps = 0;
+void initialize_graph(struct graph *gr) {
+  initialize_sp_vec(&gr->sps);
+  gr->n_taps = 0;
+  initialize_stream(&gr->dev_null);
 }
 
-void destroy_dsl_state(graph_builder_t *g, dsl_state_t *dsl) {
-  destroy_sp_vec(g, &dsl->sps);
+void destroy_graph(graph_builder_t *g, struct graph *gr) {
+  destroy_sp_vec(g, &gr->sps);
+  destroy_stream(g, &gr->dev_null);
 }
 
 stream_processor_t *emplace_stream_processor(graph_builder_t *g,
@@ -30,13 +28,7 @@ stream_processor_t *emplace_stream_processor(graph_builder_t *g,
                                              size_t n_in,
                                              size_t n_out,
                                              const char *call) {
-  dsl_state_t *dsl = &g->dsl;
-
-  for (size_t i = 0; i < n_in; i++) {
-    if (tap_vec_reserve(g, &in[i]->taps, 1, call) < 0) {
-      return NULL;
-    }
-  }
+  struct graph *gr = &g->gr;
 
   stream_t *out = ialloc(g, sizeof(stream_t) * n_out, call);
 
@@ -45,25 +37,40 @@ stream_processor_t *emplace_stream_processor(graph_builder_t *g,
   }
 
   for (size_t i = 0; i < n_out; i++) {
-    initialize_tap_vec(&out[i].taps);
+    initialize_stream(&out[i]);
   }
 
-  stream_processor_t *sp = sp_vec_emplace(g, &dsl->sps, call);
+  stream_processor_t *sp = sp_vec_emplace(g, &gr->sps, call);
 
   if (sp == NULL) {
+    for (size_t i = 0; i < n_out; i++) {
+      destroy_stream(g, &out[i]);
+    }
     ifree(g, out);
     return NULL;
   }
 
   for (size_t i = 0; i < n_in; i++) {
-    const int result = tap_vec_push(g, &in[i]->taps, dsl->n_taps + i, call);
-    assert(result == 0);
-    (void)result;
+    stream_t *stream = (in[i] == NULL) ? &gr->dev_null : in[i];
+
+    if (tap_stream(g, stream, gr->n_taps + i, call) < 0) {
+      for (size_t i = 0; i < n_out; i++) {
+        destroy_stream(g, &out[i]);
+      }
+      ifree(g, out);
+
+      for (size_t j = 0; j < i; j++) {
+        stream_t *tapped_stream = (in[i] == NULL) ? &gr->dev_null : in[i];
+        untap_stream(tapped_stream);
+      }
+
+      return NULL;
+    }
   }
 
   if (n_in > 0) {
-    *tap0 = dsl->n_taps;
-    dsl->n_taps += n_in;
+    *tap0 = gr->n_taps;
+    gr->n_taps += n_in;
   }
 
   sp->out = out;
@@ -117,8 +124,7 @@ static void destroy_stream_processor(graph_builder_t *g, stream_processor_t *sp)
   }
 
   for (size_t i = 0; i < n_out; i++) {
-    destroy_tap_vec(g, &sp->out[i].taps);
+    destroy_stream(g, &sp->out[i]);
   }
-
   ifree(g, sp->out);
 }

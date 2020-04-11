@@ -91,8 +91,24 @@ static __attribute__((unused)) void M(pop_n)(graph_builder_t *g, TYPE *vec, size
   vec->size -= n;
 }
 
-static __attribute__((unused)) void M(pop)(graph_builder_t *g, TYPE *vec) {
-  M(pop_n)(g, vec, 1);
+static __attribute__((unused)) int
+M(extend)(graph_builder_t *g, TYPE *vec, size_t n, CONTAINED_TYPE value, const char *call) {
+  if (n <= vec->size) {
+    return 0;
+  }
+
+  const size_t delta = n - vec->size;
+
+  if (M(reserve)(g, vec, delta, call) < 0) {
+    return -1;
+  }
+
+  for (size_t i = 0; i < delta; i++) {
+    vec->ary[vec->size + i] = value;
+  }
+
+  vec->size = n;
+  return 0;
 }
 
 #endif

@@ -1,7 +1,7 @@
 #include "common.h"
-#include "dsl.h"
 #include "func.h"
 #include "graph-builder.h"
+#include "graph.h"
 
 #define NAME stream_vec
 #define CONTAINED_TYPE stream_t *

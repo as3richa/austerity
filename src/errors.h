@@ -3,7 +3,18 @@
 
 #include "common.h"
 
-struct errors;
+struct errors {
+  struct austerity_error {
+    const char *call;
+    int errnum;
+    const char *english;
+  } first;
+
+  unsigned int abort : 1;
+
+  void (*callback)(void *, graph_builder_t *, const error_t *);
+  void *user;
+};
 
 void initialize_errors(struct errors *err);
 

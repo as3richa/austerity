@@ -1,30 +1,22 @@
-#ifndef DSL_H
-#define DSL_H
+#ifndef GRAPH_H
+#define GRAPH_H
 
 #include "common.h"
 #include "stream-processor.h"
-
-#define TYPE_ONLY
-#define NAME tap_vec
-#define CONTAINED_TYPE tap_t
-#include "vec.h"
-
-struct austerity_stream {
-  tap_vec_t taps;
-};
 
 #define TYPE_ONLY
 #define NAME sp_vec
 #define CONTAINED_TYPE stream_processor_t
 #include "vec.h"
 
-typedef struct {
+struct graph {
   sp_vec_t sps;
   tap_t n_taps;
-} dsl_state_t;
+  stream_t dev_null;
+};
 
-void initialize_dsl_state(dsl_state_t *dsl);
-void destroy_dsl_state(graph_builder_t *g, dsl_state_t *dsl);
+void initialize_graph(struct graph *gr);
+void destroy_graph(graph_builder_t *g, struct graph *gr);
 
 stream_processor_t *emplace_stream_processor(graph_builder_t *g,
                                              tap_t *tap0,

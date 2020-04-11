@@ -1,7 +1,7 @@
 #ifndef STREAM_PROCESSOR_H
 #define STREAM_PROCESSOR_H
 
-typedef st_size_t tap_t;
+#include "stream.h"
 
 struct buffer {
   char *bytes;

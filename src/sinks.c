@@ -1,7 +1,7 @@
 #include "common.h"
-#include "dsl.h"
 #include "errors.h"
 #include "graph-builder.h"
+#include "graph.h"
 
 static stream_processor_t *emplace_sink(graph_builder_t *g, stream_t *in, const char *call);
 
