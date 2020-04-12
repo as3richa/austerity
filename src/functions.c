@@ -94,7 +94,7 @@ static int my_function_e(graph_builder_t *g,
 
   tap_t tap0;
   stream_t out0;
-  stream_processor_t *sp = create_stream_processor(g, &tap0, in, n_in, &out0, n_out, call);
+  stream_processor_t *sp = create_stream_processor(g, &g->gr, &tap0, in, n_in, &out0, n_out, call);
 
   if (sp == NULL) {
     return -1;

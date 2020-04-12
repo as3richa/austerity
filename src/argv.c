@@ -25,7 +25,15 @@ static void destroy_arg(graph_builder_t *g, struct argv_arg *arg);
 static int push_str(argv_t *argv, const char *arg, const char *call);
 static int push_strs_v(argv_t *argv, va_list v, const char *call);
 
+#define UNUSED_MESSAGE "argv has already been used and cannot be modified"
+#define UNUSED_CHECK(argv, ret, call)                                                              \
+  INVAL_CHECK((argv)->g, (argv)->used, UNUSED_MESSAGE, ret, call)
+
 argv_t *create_argv(graph_builder_t *g) {
+  if (g == NULL) {
+    return NULL;
+  }
+
   argv_t *argv = alloc_argv(g, __func__);
 
   if (argv == NULL) {
@@ -34,11 +42,16 @@ argv_t *create_argv(graph_builder_t *g) {
 
   argv->g = g;
   initialize_argv_vec(&argv->args);
+  argv->used = 0;
 
   return argv;
 }
 
 argv_t *create_argv_v(graph_builder_t *g, ... /* const char *, ..., NULL */) {
+  if (g == NULL) {
+    return NULL;
+  }
+
   argv_t *argv = alloc_argv(g, __func__);
 
   if (argv == NULL) {
@@ -47,6 +60,7 @@ argv_t *create_argv_v(graph_builder_t *g, ... /* const char *, ..., NULL */) {
 
   argv->g = g;
   initialize_argv_vec(&argv->args);
+  argv->used = 0;
 
   va_list v;
   va_start(v, g);
@@ -64,6 +78,7 @@ argv_t *create_argv_v(graph_builder_t *g, ... /* const char *, ..., NULL */) {
 void initialize_argv(graph_builder_t *g, argv_t *argv) {
   argv->g = g;
   initialize_argv_vec(&argv->args);
+  argv->used = 0;
 }
 
 void destroy_argv(graph_builder_t *g, argv_t *argv) {
@@ -72,16 +87,30 @@ void destroy_argv(graph_builder_t *g, argv_t *argv) {
 }
 
 int argv_push_str(argv_t *argv, const char *arg) {
+  if (argv == NULL) {
+    return -1;
+  }
+
+  UNUSED_CHECK(argv, -1, __func__);
+
   return push_str(argv, arg, __func__);
 }
 
 int argv_push_strs(argv_t *argv, char *const *const args, size_t n_args) {
+  if (argv == NULL) {
+    return -1;
+  }
+
+  UNUSED_CHECK(argv, -1, __func__);
+
   graph_builder_t *g = argv->g;
 
-  NULL_CHECK(g, args, -1, __func__);
+  if (n_args > 0) {
+    NULL_CHECK(g, args, -1, __func__);
 
-  for (size_t i = 0; i < n_args; i++) {
-    NULL_CHECK(g, args[i], -1, __func__);
+    for (size_t i = 0; i < n_args; i++) {
+      NULL_CHECK(g, args[i], -1, __func__);
+    }
   }
 
   if (argv_vec_reserve(g, &argv->args, n_args, __func__) < 0) {
@@ -107,6 +136,12 @@ int argv_push_strs(argv_t *argv, char *const *const args, size_t n_args) {
 }
 
 int argv_push_strs_v(argv_t *argv, ...) {
+  if (argv == NULL) {
+    return -1;
+  }
+
+  UNUSED_CHECK(argv, -1, __func__);
+
   va_list v;
   va_start(v, argv);
   const int result = push_strs_v(argv, v, __func__);
@@ -115,6 +150,12 @@ int argv_push_strs_v(argv_t *argv, ...) {
 }
 
 int argv_push_input(argv_t *argv, stream_t in) {
+  if (argv == NULL) {
+    return -1;
+  }
+
+  UNUSED_CHECK(argv, -1, __func__);
+
   graph_builder_t *g = argv->g;
 
   struct argv_arg *arg = argv_vec_emplace(g, &argv->args, __func__);
@@ -123,7 +164,7 @@ int argv_push_input(argv_t *argv, stream_t in) {
     return -1;
   }
 
-  tap_t tap = tap_stream(g, in, __func__);
+  tap_t tap = tap_stream(g, &g->gr, in, __func__);
 
   if (tap == NIL_TAP) {
     argv_vec_unemplace(&argv->args);
@@ -133,10 +174,18 @@ int argv_push_input(argv_t *argv, stream_t in) {
   arg->type = ARG_IN;
   arg->u.in = tap;
 
+  argv->has_inputs = 1;
+
   return 0;
 }
 
 stream_t argv_push_output(argv_t *argv) {
+  if (argv == NULL) {
+    return -1;
+  }
+
+  UNUSED_CHECK(argv, -1, __func__);
+
   graph_builder_t *g = argv->g;
 
   struct argv_arg *arg = argv_vec_emplace(g, &argv->args, __func__);
@@ -145,7 +194,7 @@ stream_t argv_push_output(argv_t *argv) {
     return NIL_STREAM;
   }
 
-  const stream_t out = create_stream(g, __func__);
+  const stream_t out = create_stream(g, &g->gr, __func__);
 
   if (out == NIL_STREAM) {
     argv_vec_unemplace(&argv->args);
@@ -154,6 +203,8 @@ stream_t argv_push_output(argv_t *argv) {
 
   arg->type = ARG_OUT;
   arg->u.out = out;
+
+  argv->has_outputs = 1;
 
   return out;
 }

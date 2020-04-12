@@ -13,6 +13,10 @@ struct argv_arg;
 struct austerity_argv {
   graph_builder_t *g;
   argv_vec_t args;
+
+  unsigned int used : 1;
+  unsigned int has_inputs : 1;
+  unsigned int has_outputs : 1;
 };
 
 void initialize_argv(graph_builder_t *g, argv_t *argv);

@@ -1,3 +1,4 @@
+#include "argv.h"
 #include "common.h"
 #include "graph-builder.h"
 #include "graph.h"
@@ -47,7 +48,8 @@ static stream_t my_command_e(graph_builder_t *g,
 
   tap_t tap;
   stream_t stdout_stderr;
-  stream_processor_t *sp = create_stream_processor(g, &tap, &stdin, 1, &stdout_stderr, 2, call);
+  stream_processor_t *sp =
+      create_stream_processor(g, &g->gr, &tap, &stdin, 1, &stdout_stderr, 2, call);
 
   if (sp == NULL) {
     ifree(g, my_path);
@@ -61,6 +63,8 @@ static stream_t my_command_e(graph_builder_t *g,
 
   sp->type = SP_COMMAND;
   sp->u.command = (struct sp_command){env, my_path, argv, tap, stdout_stderr};
+
+  argv->used = 1;
 
   if (stderr != NULL) {
     *stderr = stdout_stderr + 1;

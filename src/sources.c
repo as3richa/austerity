@@ -7,6 +7,7 @@ static stream_processor_t *emplace_source(graph_builder_t *g, const char *call);
 
 static stream_t
 my_buffer_source(graph_builder_t *g, const char *buffer, size_t size, const char *call);
+
 static stream_t
 my_static_buffer_source(graph_builder_t *g, const char *buffer, size_t size, const char *call);
 
@@ -80,7 +81,7 @@ stream_t static_buffer_source(graph_builder_t *g, const char *buffer, size_t siz
 
 static stream_processor_t *emplace_source(graph_builder_t *g, const char *call) {
   stream_t out;
-  stream_processor_t *sp = create_stream_processor(g, NULL, NULL, 0, &out, 1, call);
+  stream_processor_t *sp = create_stream_processor(g, &g->gr, NULL, NULL, 0, &out, 1, call);
 
   if (sp == NULL) {
     return NULL;

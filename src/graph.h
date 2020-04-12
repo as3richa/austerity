@@ -32,10 +32,14 @@ struct graph {
 void initialize_graph(struct graph *gr);
 void destroy_graph(graph_builder_t *g, struct graph *gr);
 
-stream_t create_stream(graph_builder_t *g, const char *call);
-tap_t tap_stream(graph_builder_t *g, stream_t stream, const char *call);
+int shallow_copy_graph_from_builder(graph_builder_t *g, struct graph *dest, const char *call);
+void shallow_destroy_graph(graph_builder_t *g, struct graph *gr);
+
+stream_t create_stream(graph_builder_t *g, struct graph *gr, const char *call);
+tap_t tap_stream(graph_builder_t *g, struct graph *gr, stream_t stream, const char *call);
 
 stream_processor_t *create_stream_processor(graph_builder_t *g,
+                                            struct graph *gr,
                                             tap_t *tap0,
                                             const stream_t *in,
                                             size_t n_in,

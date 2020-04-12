@@ -58,7 +58,7 @@ int c_file_sink(graph_builder_t *g, FILE *c_file, stream_t in) {
 
 static stream_processor_t *emplace_sink(graph_builder_t *g, stream_t in, const char *call) {
   tap_t tap;
-  stream_processor_t *sp = create_stream_processor(g, &tap, &in, 1, NULL, 0, call);
+  stream_processor_t *sp = create_stream_processor(g, &g->gr, &tap, &in, 1, NULL, 0, call);
 
   if (sp == NULL) {
     return NULL;
