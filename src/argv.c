@@ -38,7 +38,7 @@ argv_t *create_argv(graph_builder_t *g) {
   return argv;
 }
 
-argv_t *create_argv_v(graph_builder_t *g, ... /* const char * */) {
+argv_t *create_argv_v(graph_builder_t *g, ... /* const char *, ..., NULL */) {
   argv_t *argv = alloc_argv(g, __func__);
 
   if (argv == NULL) {

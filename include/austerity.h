@@ -34,8 +34,7 @@ void austerity_graph_builder_on_error(austerity_graph_builder_t *g,
 typedef uint_least32_t austerity_stream_t;
 #define AUSTERITY_NIL_STREAM (austerity_stream_t)(-1)
 #define AUSTERITY_STREAM_VA_END (austerity_stream_t)(-2)
-#define AUSTERITY_DEV_NULL (austerity_stream_t)(-3)
-#define AUSTERITY_MAX_STREAMS (austerity_stream_t)(-4)
+#define AUSTERITY_MAX_STREAMS (austerity_stream_t)(-3)
 
 austerity_stream_t austerity_fd_source(austerity_graph_builder_t *g, int fd);
 

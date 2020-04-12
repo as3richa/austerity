@@ -56,6 +56,16 @@ struct sp_function {
   size_t n_out;
 };
 
+struct sp_junction {
+  union {
+    tap_t in;
+    stream_t out;
+  } * ios;
+
+  st_size_t n_in;
+  st_size_t n_out;
+};
+
 typedef struct {
   enum {
     SP_FD_SOURCE,
@@ -69,7 +79,8 @@ typedef struct {
     SP_PATH_SINK,
     SP_C_FILE_SINK,
     SP_COMMAND,
-    SP_FUNCTION
+    SP_FUNCTION,
+    SP_JUNCTION
   } type;
 
   union {
@@ -77,6 +88,7 @@ typedef struct {
     struct sp_sink sink;
     struct sp_command command;
     struct sp_function function;
+    struct sp_junction junction;
   } u;
 } stream_processor_t;
 
