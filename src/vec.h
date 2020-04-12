@@ -20,7 +20,7 @@ typedef struct {
 
 #ifndef TYPE_ONLY
 
-static void L(initialize)(TYPE *vec) {
+static __attribute__((unused)) void L(initialize)(TYPE *vec) {
   *vec = (TYPE){NULL, 0, 0};
 }
 
@@ -28,7 +28,7 @@ static void L(shallow_destroy)(graph_builder_t *g, TYPE *vec) {
   ifree(g, vec->ary);
 }
 
-static void L(destroy)(graph_builder_t *g, TYPE *vec) {
+static __attribute__((unused)) void L(destroy)(graph_builder_t *g, TYPE *vec) {
 #ifdef DESTRUCTOR
   for (size_t i = 0; i < vec->size; i++) {
     DESTRUCTOR(g, &vec->ary[i]);
@@ -36,6 +36,13 @@ static void L(destroy)(graph_builder_t *g, TYPE *vec) {
 #endif
 
   L(shallow_destroy)(g, vec);
+}
+
+static __attribute__((unused)) CONTAINED_TYPE *L(move_from)(TYPE *vec, size_t *size) {
+  *size = vec->size;
+  CONTAINED_TYPE *ary = vec->ary;
+  L(initialize)(vec);
+  return ary;
 }
 
 static __attribute__((unused)) int
@@ -130,6 +137,11 @@ M(extend)(graph_builder_t *g, TYPE *vec, size_t n, CONTAINED_TYPE value, const c
 }
 
 static __attribute__((unused)) CONTAINED_TYPE *M(ref)(TYPE *vec, size_t i) {
+  ASSERT(i < vec->size);
+  return &vec->ary[i];
+}
+
+static __attribute__((unused)) CONTAINED_TYPE const *M(const_ref)(const TYPE *vec, size_t i) {
   ASSERT(i < vec->size);
   return &vec->ary[i];
 }

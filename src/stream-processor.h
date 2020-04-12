@@ -51,19 +51,21 @@ struct sp_function {
   austerity_func_t *func;
   void *user;
   tap_t in0;
-  size_t n_in;
+  st_size_t n_in;
   stream_t out0;
-  size_t n_out;
+  st_size_t n_out;
 };
 
-struct sp_junction {
-  union {
-    tap_t in;
-    stream_t out;
-  } * ios;
-
-  st_size_t n_in;
+struct sp_splitter {
+  tap_t in;
+  stream_t out0;
   st_size_t n_out;
+};
+
+struct sp_joiner {
+  tap_t *in;
+  st_size_t n_in;
+  stream_t out;
 };
 
 typedef struct {
@@ -80,7 +82,8 @@ typedef struct {
     SP_C_FILE_SINK,
     SP_COMMAND,
     SP_FUNCTION,
-    SP_JUNCTION
+    SP_SPLITTER,
+    SP_JOINER
   } type;
 
   union {
@@ -88,7 +91,8 @@ typedef struct {
     struct sp_sink sink;
     struct sp_command command;
     struct sp_function function;
-    struct sp_junction junction;
+    struct sp_splitter splitter;
+    struct sp_joiner joiner;
   } u;
 } stream_processor_t;
 
