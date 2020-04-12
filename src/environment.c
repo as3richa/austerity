@@ -15,7 +15,7 @@ environment_t *create_environment(graph_builder_t *g) {
 }
 
 void destroy_environment(graph_builder_t *g, environment_t *env) {
-  assert(g == env->g);
+  ASSERT(g == env->g);
 
   ifree(g, env->wd);
 
@@ -71,7 +71,7 @@ int environment_clearenv(environment_t *env) {
 struct un_setenv_op *emplace_un_setenv_op(environment_t *env, const char *call) {
   struct un_setenv_op_vec *ops = &env->un_setenv_ops;
 
-  assert(ops->size <= ops->capacity);
+  ASSERT(ops->size <= ops->capacity);
 
   if (ops->size == ops->capacity) {
     const size_t capacity = 2 * ops->capacity + 1;
@@ -87,7 +87,7 @@ struct un_setenv_op *emplace_un_setenv_op(environment_t *env, const char *call) 
     ops->capacity = capacity;
   }
 
-  assert(ops->size < ops->capacity);
+  ASSERT(ops->size < ops->capacity);
 
   return &ops->ary[ops->size++];
 }

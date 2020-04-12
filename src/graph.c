@@ -1,130 +1,168 @@
-#include "func.h"
+#include "graph.h"
 #include "graph-builder.h"
 #include "stream-processor.h"
-#include "stream.h"
 
 static void destroy_stream_processor(graph_builder_t *g, stream_processor_t *sp);
 
 #define METHODS_ONLY
-#define NAME sp_vec
+#define NAME stream_processor_vec
 #define CONTAINED_TYPE stream_processor_t
 #define DESTRUCTOR destroy_stream_processor
 #include "vec.h"
 
+#define METHODS_ONLY
+#define NAME tap_vec
+#define CONTAINED_TYPE tap_t
+#include "vec.h"
+
+static void destroy_stream_data(graph_builder_t *g, stream_data_t *sd);
+
+#define METHODS_ONLY
+#define NAME stream_data_vec
+#define CONTAINED_TYPE stream_data_t
+#define DESTRUCTOR destroy_stream_data
+#include "vec.h"
+
+static stream_t
+create_streams(graph_builder_t *g, stream_data_vec_t *stream_data, size_t n, const char *call);
+
+static void uncreate_streams(graph_builder_t *g, stream_data_vec_t *stream_data, size_t n);
+
 void initialize_graph(struct graph *gr) {
-  initialize_sp_vec(&gr->sps);
+  initialize_stream_processor_vec(&gr->sps);
+  initialize_stream_data_vec(&gr->stream_data);
   gr->n_taps = 0;
-  initialize_stream(&gr->dev_null);
 }
 
 void destroy_graph(graph_builder_t *g, struct graph *gr) {
-  destroy_sp_vec(g, &gr->sps);
-  destroy_stream(g, &gr->dev_null);
+  destroy_stream_processor_vec(g, &gr->sps);
+  destroy_stream_data_vec(g, &gr->stream_data);
 }
 
-stream_processor_t *emplace_stream_processor(graph_builder_t *g,
-                                             tap_t *tap0,
-                                             stream_t *const *in,
-                                             size_t n_in,
-                                             size_t n_out,
-                                             const char *call) {
+stream_t create_stream(graph_builder_t *g, const char *call) {
+  return create_streams(g, &g->gr.stream_data, 1, call);
+}
+
+tap_t tap_stream(graph_builder_t *g, stream_t stream, const char *call) {
+  struct graph *gr = &g->gr;
+  stream_data_t *data = stream_data_vec_ref(&gr->stream_data, stream);
+
+  if (tap_vec_push(g, &data->taps, gr->n_taps, call) < 0) {
+    return NIL_TAP;
+  }
+
+  return gr->n_taps++;
+}
+
+void untap_stream(graph_builder_t *g, stream_t stream) {
+  struct graph *gr = &g->gr;
+  stream_data_t *data = stream_data_vec_ref(&gr->stream_data, stream);
+  assert(data->taps.size > 0);
+  tap_vec_pop_n(g, &data->taps, 1); // FIXME: _pop?
+}
+
+stream_processor_t *create_stream_processor(graph_builder_t *g,
+                                            tap_t *tap0,
+                                            const stream_t *in,
+                                            size_t n_in,
+                                            stream_t *out0,
+                                            size_t n_out,
+                                            const char *call) {
   struct graph *gr = &g->gr;
 
-  stream_t *out = ialloc(g, sizeof(stream_t) * n_out, call);
+  if (n_out > 0) {
+    stream_t out = create_streams(g, &gr->stream_data, n_out, call);
 
-  if (out == NULL) {
-    return NULL;
-  }
-
-  for (size_t i = 0; i < n_out; i++) {
-    initialize_stream(&out[i]);
-  }
-
-  stream_processor_t *sp = sp_vec_emplace(g, &gr->sps, call);
-
-  if (sp == NULL) {
-    for (size_t i = 0; i < n_out; i++) {
-      destroy_stream(g, &out[i]);
-    }
-    ifree(g, out);
-    return NULL;
-  }
-
-  for (size_t i = 0; i < n_in; i++) {
-    stream_t *stream = (in[i] == NULL) ? &gr->dev_null : in[i];
-
-    if (tap_stream(g, stream, gr->n_taps + i, call) < 0) {
-      for (size_t i = 0; i < n_out; i++) {
-        destroy_stream(g, &out[i]);
-      }
-      ifree(g, out);
-
-      for (size_t j = 0; j < i; j++) {
-        stream_t *tapped_stream = (in[i] == NULL) ? &gr->dev_null : in[i];
-        untap_stream(tapped_stream);
-      }
-
+    if (out == NIL_STREAM) {
       return NULL;
     }
+
+    *out0 = out;
+  }
+
+  stream_processor_t *sp = stream_processor_vec_emplace(g, &gr->sps, call);
+
+  if (sp == NULL) {
+    uncreate_streams(g, &gr->stream_data, n_out);
+    return NULL;
   }
 
   if (n_in > 0) {
     *tap0 = gr->n_taps;
-    gr->n_taps += n_in;
+
+    for (size_t i = 0; i < n_in; i++) {
+      if (tap_stream(g, in[i], call) == NIL_STREAM) {
+        uncreate_streams(g, &gr->stream_data, n_out);
+        stream_processor_vec_unemplace(&gr->sps);
+
+        for (size_t j = 0; j < i; j++) {
+          untap_stream(g, in[i]);
+        }
+
+        return NULL;
+      }
+    }
+
+    assert(gr->n_taps == *tap0 + n_in);
   }
 
-  sp->out = out;
   return sp;
 }
 
 static void destroy_stream_processor(graph_builder_t *g, stream_processor_t *sp) {
-  size_t n_out;
-
   switch (sp->type) {
   case SP_PATH_SOURCE:
-    ifree(g, sp->u.source.path);
-    n_out = 1;
+    ifree(g, sp->u.source.u.path);
     break;
 
   case SP_STR_SOURCE:
   case SP_BUFFER_SOURCE:
-    ifree(g, sp->u.source.buf.bytes);
-    n_out = 1;
+    ifree(g, sp->u.source.u.buf.bytes);
     break;
 
   case SP_PATH_SINK:
     ifree(g, sp->u.sink.u.path.path);
-    n_out = 1;
     break;
 
   case SP_COMMAND:
     ifree(g, sp->u.command.path);
-    n_out = 2;
     break;
 
   case SP_FUNCTION:
-    n_out = sp->u.function.func->n_out;
-    break;
-
   case SP_FD_SOURCE:
   case SP_C_FILE_SOURCE:
   case SP_STATIC_STR_SOURCE:
   case SP_STATIC_BUFFER_SOURCE:
-    n_out = 1;
-    break;
-
   case SP_FD_SINK:
   case SP_C_FILE_SINK:
-    n_out = 0;
     break;
 
   default:
-    assert(0);
-    n_out = -1;
+    ASSERT(0);
+  }
+}
+
+static void destroy_stream_data(graph_builder_t *g, stream_data_t *sd) {
+  destroy_tap_vec(g, &sd->taps);
+}
+
+static stream_t
+create_streams(graph_builder_t *g, stream_data_vec_t *stream_data, size_t n, const char *call) {
+  stream_t stream0 = stream_data->size;
+  stream_data_t *data = stream_data_vec_emplace_n(g, stream_data, n, call);
+
+  if (data == NULL) {
+    return NIL_STREAM;
   }
 
-  for (size_t i = 0; i < n_out; i++) {
-    destroy_stream(g, &sp->out[i]);
+  for (size_t i = 0; i < n; i++) {
+    initialize_tap_vec(&data[i].taps);
   }
-  ifree(g, sp->out);
+
+  return stream0;
+}
+
+static void uncreate_streams(graph_builder_t *g, stream_data_vec_t *stream_data, size_t n) {
+  assert(stream_data->size >= n);
+  stream_data_vec_pop_n(g, stream_data, n);
 }

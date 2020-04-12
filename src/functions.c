@@ -4,53 +4,52 @@
 #include "graph.h"
 
 #define NAME stream_vec
-#define CONTAINED_TYPE stream_t *
+#define CONTAINED_TYPE stream_t
 #include "vec.h"
 
 static int my_function_e(graph_builder_t *g,
-                         stream_t **out,
+                         stream_t *out,
                          environment_t *env,
                          func_t *func,
                          void *user,
-                         stream_t *const *in,
+                         const stream_t *in,
                          size_t n_in,
                          const char *call);
 
-int function(graph_builder_t *g,
-             stream_t **out,
-             func_t *func,
-             void *user,
-             stream_t *const *in,
-             size_t n_in) {
+int function(
+    graph_builder_t *g, stream_t *out, func_t *func, void *user, const stream_t *in, size_t n_in) {
   return my_function_e(g, out, NULL, func, user, in, n_in, __func__);
 }
 
-int function_0(graph_builder_t *g, stream_t **out, func_t *func, void *user) {
+int function_0(graph_builder_t *g, stream_t *out, func_t *func, void *user) {
   return my_function_e(g, out, NULL, func, user, NULL, 0, __func__);
 }
 
-int function_1(graph_builder_t *g, stream_t **out, func_t *func, void *user, stream_t *in) {
+int function_1(graph_builder_t *g, stream_t *out, func_t *func, void *user, stream_t in) {
   return my_function_e(g, out, NULL, func, user, &in, 1, __func__);
 }
 
 int function_2(
-    graph_builder_t *g, stream_t **out, func_t *func, void *user, stream_t *left, stream_t *right) {
-  stream_t *in[2] = {left, right};
+    graph_builder_t *g, stream_t *out, func_t *func, void *user, stream_t left, stream_t right) {
+  stream_t in[2] = {left, right};
   return my_function_e(g, out, NULL, func, user, in, 2, __func__);
 }
 
 int function_e(graph_builder_t *g,
-               stream_t **out,
+               stream_t *out,
                environment_t *env,
                func_t *func,
                void *user,
-               stream_t *const *in,
+               const stream_t *in,
                size_t n_in) {
   return my_function_e(g, out, env, func, user, in, n_in, __func__);
 }
 
-int function_v(
-    graph_builder_t *g, stream_t **out, func_t *func, void *user, ... /* stream_t *, ..., NULL */) {
+int function_v(graph_builder_t *g,
+               stream_t *out,
+               func_t *func,
+               void *user,
+               ... /* stream_t, ..., STREAM_VA_END */) {
   stream_vec_t in;
   initialize_stream_vec(&in);
 
@@ -58,9 +57,9 @@ int function_v(
   va_start(v, user);
 
   for (;;) {
-    stream_t *stream = va_arg(v, stream_t *);
+    stream_t stream = va_arg(v, stream_t);
 
-    if (stream == NULL) {
+    if (stream == STREAM_VA_END) {
       break;
     }
 
@@ -80,11 +79,11 @@ int function_v(
 }
 
 static int my_function_e(graph_builder_t *g,
-                         stream_t **out,
+                         stream_t *out,
                          environment_t *env,
                          func_t *func,
                          void *user,
-                         stream_t *const *in,
+                         const stream_t *in,
                          size_t n_in,
                          const char *call) {
   if (env == NULL) {
@@ -94,17 +93,18 @@ static int my_function_e(graph_builder_t *g,
   const size_t n_out = func->n_out;
 
   tap_t tap0;
-  stream_processor_t *sp = emplace_stream_processor(g, &tap0, in, n_in, n_out, call);
+  stream_t out0;
+  stream_processor_t *sp = create_stream_processor(g, &tap0, in, n_in, &out0, n_out, call);
 
   if (sp == NULL) {
     return -1;
   }
 
   sp->type = SP_FUNCTION;
-  sp->u.function = (struct sp_function){env, func, user, tap0, n_in};
+  sp->u.function = (struct sp_function){env, func, user, tap0, n_in, out0, n_out};
 
   for (size_t i = 0; i < n_out; i++) {
-    out[i] = sp->out + i;
+    out[i] = out0 + i;
   }
 
   return 0;

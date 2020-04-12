@@ -10,7 +10,7 @@ struct argv_arg {
   union {
     char *str;
     tap_t in;
-    stream_t *out;
+    stream_t out;
   } u;
 };
 
@@ -67,7 +67,7 @@ void initialize_argv(graph_builder_t *g, argv_t *argv) {
 }
 
 void destroy_argv(graph_builder_t *g, argv_t *argv) {
-  assert(g == argv->g);
+  ASSERT(g == argv->g);
   destroy_argv_vec(g, &argv->args);
 }
 
@@ -78,10 +78,10 @@ int argv_push_str(argv_t *argv, const char *arg) {
 int argv_push_strs(argv_t *argv, char *const *const args, size_t n_args) {
   graph_builder_t *g = argv->g;
 
-  NULL_CHECK(g, args, -1);
+  NULL_CHECK(g, args, -1, __func__);
 
   for (size_t i = 0; i < n_args; i++) {
-    NULL_CHECK(g, args[i], -1);
+    NULL_CHECK(g, args[i], -1, __func__);
   }
 
   if (argv_vec_reserve(g, &argv->args, n_args, __func__) < 0) {
@@ -97,7 +97,7 @@ int argv_push_strs(argv_t *argv, char *const *const args, size_t n_args) {
     }
 
     struct argv_arg *arg = argv_vec_emplace(g, &argv->args, __func__);
-    assert(arg != NULL);
+    ASSERT(arg != NULL);
 
     arg->type = ARG_STR;
     arg->u.str = my_str;
@@ -114,48 +114,42 @@ int argv_push_strs_v(argv_t *argv, ...) {
   return result;
 }
 
-int argv_push_input(argv_t *argv, stream_t *in) {
+int argv_push_input(argv_t *argv, stream_t in) {
   graph_builder_t *g = argv->g;
-  struct graph *gr = &g->gr;
-
-  if (in == NULL) {
-    in = &gr->dev_null;
-  }
-
-  if (tap_stream(g, in, gr->n_taps, __func__) < 0) {
-    return -1;
-  }
 
   struct argv_arg *arg = argv_vec_emplace(g, &argv->args, __func__);
 
   if (arg == NULL) {
-    untap_stream(in);
+    return -1;
+  }
+
+  tap_t tap = tap_stream(g, in, __func__);
+
+  if (tap == NIL_TAP) {
+    argv_vec_unemplace(&argv->args);
     return -1;
   }
 
   arg->type = ARG_IN;
-  arg->u.in = gr->n_taps++;
+  arg->u.in = tap;
 
   return 0;
 }
 
-stream_t *argv_push_output(argv_t *argv) {
+stream_t argv_push_output(argv_t *argv) {
   graph_builder_t *g = argv->g;
-
-  stream_t *out = ialloc(g, sizeof(stream_t), __func__);
-
-  if (out == NULL) {
-    return NULL;
-  }
-
-  initialize_stream(out);
 
   struct argv_arg *arg = argv_vec_emplace(g, &argv->args, __func__);
 
   if (arg == NULL) {
-    destroy_stream(g, out);
-    ifree(g, out);
-    return NULL;
+    return NIL_STREAM;
+  }
+
+  const stream_t out = create_stream(g, __func__);
+
+  if (out == NIL_STREAM) {
+    argv_vec_unemplace(&argv->args);
+    return NIL_STREAM;
   }
 
   arg->type = ARG_OUT;
@@ -181,7 +175,7 @@ static int push_strs_v(argv_t *argv, va_list v, const char *call) {
 static int push_str(argv_t *argv, const char *str, const char *call) {
   graph_builder_t *g = argv->g;
 
-  NULL_CHECK(g, str, -1);
+  NULL_CHECK(g, str, -1, call);
 
   char *my_str = copy_str(g, str, call);
 
@@ -203,20 +197,10 @@ static int push_str(argv_t *argv, const char *str, const char *call) {
 }
 
 static void destroy_arg(graph_builder_t *g, struct argv_arg *arg) {
-  switch (arg->type) {
-  case ARG_STR:
-    ifree(g, arg->u.str);
-    break;
-
-  case ARG_IN:
-    break;
-
-  case ARG_OUT:
-    destroy_stream(g, arg->u.out);
-    ifree(g, arg->u.out);
-    break;
-
-  default:
-    assert(0);
+  if (arg->type != ARG_STR) {
+    ASSERT(arg->type == ARG_IN || arg->type == ARG_OUT);
+    return;
   }
+
+  ifree(g, arg->u.str);
 }

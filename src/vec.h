@@ -36,10 +36,10 @@ static __attribute__((unused)) void L(destroy)(graph_builder_t *g, TYPE *vec) {
 
 static __attribute__((unused)) int
 M(reserve)(graph_builder_t *g, TYPE *vec, size_t n, const char *call) {
-  assert(vec->size <= vec->capacity);
+  ASSERT(vec->size <= vec->capacity);
 
   if (vec->size + n > vec->capacity) {
-    const size_t capacity = 1 + vec->capacity + (vec->capacity >> 1);
+    const size_t capacity = n + vec->capacity + (vec->capacity >> 1);
     CONTAINED_TYPE *ary =
         irealloc(g, vec->ary, sizeof(CONTAINED_TYPE), capacity, vec->capacity, call);
 
@@ -51,18 +51,32 @@ M(reserve)(graph_builder_t *g, TYPE *vec, size_t n, const char *call) {
     vec->capacity = capacity;
   }
 
-  assert(vec->size + n <= vec->capacity);
+  ASSERT(vec->size + n <= vec->capacity);
   return 0;
 }
 
 static __attribute__((unused)) CONTAINED_TYPE *
-M(emplace)(graph_builder_t *g, TYPE *vec, const char *call) {
-  if (M(reserve(g, vec, 1, call)) < 0) {
+M(emplace_n)(graph_builder_t *g, TYPE *vec, size_t n, const char *call) {
+  if (M(reserve(g, vec, n, call)) < 0) {
     return NULL;
   }
 
-  assert(vec->size < vec->capacity);
-  return &vec->ary[vec->size++];
+  ASSERT(vec->size + n <= vec->capacity);
+
+  const size_t index = vec->size;
+  vec->size += n;
+
+  return &vec->ary[index];
+}
+
+static __attribute__((unused)) CONTAINED_TYPE *
+M(emplace)(graph_builder_t *g, TYPE *vec, const char *call) {
+  return M(emplace_n)(g, vec, 1, call);
+}
+
+static __attribute__((unused)) void M(unemplace)(TYPE *vec) {
+  assert(vec->size > 0);
+  vec->size--;
 }
 
 static __attribute__((unused)) int
@@ -78,7 +92,7 @@ M(push)(graph_builder_t *g, TYPE *vec, CONTAINED_TYPE value, const char *call) {
 }
 
 static __attribute__((unused)) void M(pop_n)(graph_builder_t *g, TYPE *vec, size_t n) {
-  assert(vec->size >= n);
+  ASSERT(vec->size >= n);
 
 #ifdef DESTRUCTOR
   for (size_t i = 1; i <= n; i++) {
@@ -109,6 +123,11 @@ M(extend)(graph_builder_t *g, TYPE *vec, size_t n, CONTAINED_TYPE value, const c
 
   vec->size = n;
   return 0;
+}
+
+static __attribute__((unused)) CONTAINED_TYPE *M(ref)(TYPE *vec, size_t i) {
+  ASSERT(i < vec->size);
+  return &vec->ary[i];
 }
 
 #endif

@@ -35,7 +35,7 @@ static __attribute__((unused)) void L(destroy)(graph_builder_t *g, TYPE **arena)
 static __attribute__((unused)) CONTAINED_TYPE *
 M(alloc)(graph_builder_t *g, TYPE **arena_ref, const char *call) {
   TYPE *arena = *arena_ref;
-  assert(arena == NULL || arena->size <= arena->capacity);
+  ASSERT(arena == NULL || arena->size <= arena->capacity);
 
   if (arena == NULL || arena->size == arena->capacity) {
     size_t capacity = (arena == NULL) ? 1 : (1 + 2 * arena->capacity);
@@ -59,7 +59,7 @@ M(alloc)(graph_builder_t *g, TYPE **arena_ref, const char *call) {
     *arena_ref = arena;
   }
 
-  assert(arena != NULL && arena->size < arena->capacity);
+  ASSERT(arena != NULL && arena->size < arena->capacity);
 
   CONTAINED_TYPE *elem = &arena->ary[arena->size++];
 

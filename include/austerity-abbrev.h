@@ -57,5 +57,7 @@
 #define create_argv_v austerity_create_argv_v
 #define command_e austerity_command_e
 #define func_t austerity_func_t
+#define NIL_STREAM AUSTERITY_NIL_STREAM
+#define STREAM_VA_END AUSTERITY_STREAM_VA_END
 
 #endif

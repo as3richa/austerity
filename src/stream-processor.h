@@ -1,8 +1,6 @@
 #ifndef STREAM_PROCESSOR_H
 #define STREAM_PROCESSOR_H
 
-#include "stream.h"
-
 struct buffer {
   char *bytes;
   st_size_t size;
@@ -13,12 +11,16 @@ struct static_buffer {
   st_size_t size;
 };
 
-union sp_source {
-  int fd;
-  char *path;
-  FILE *c_file;
-  struct buffer buf;
-  struct static_buffer sbuf;
+struct sp_source {
+  stream_t out;
+
+  union {
+    int fd;
+    char *path;
+    FILE *c_file;
+    struct buffer buf;
+    struct static_buffer sbuf;
+  } u;
 };
 
 struct sp_sink {
@@ -41,14 +43,17 @@ struct sp_command {
   char *path;
   argv_t *argv;
   tap_t stdin;
+  stream_t stdout_stderr;
 };
 
 struct sp_function {
   environment_t *env;
   austerity_func_t *func;
   void *user;
-  tap_t tap0;
+  tap_t in0;
   size_t n_in;
+  stream_t out0;
+  size_t n_out;
 };
 
 typedef struct {
@@ -67,10 +72,8 @@ typedef struct {
     SP_FUNCTION
   } type;
 
-  stream_t *out;
-
   union {
-    union sp_source source;
+    struct sp_source source;
     struct sp_sink sink;
     struct sp_command command;
     struct sp_function function;
