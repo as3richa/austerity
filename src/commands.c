@@ -64,7 +64,10 @@ static stream_t my_command_e(graph_builder_t *g,
   sp->type = SP_COMMAND;
   sp->u.command = (struct sp_command){env, my_path, argv, tap, stdout_stderr};
 
-  argv->used = 1;
+  // FIXME: handle default value of argv, somewhere
+  if (argv != NULL) {
+    argv->used = 1;
+  }
 
   if (stderr != NULL) {
     *stderr = stdout_stderr + 1;

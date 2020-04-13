@@ -62,8 +62,8 @@ struct sp_splitter {
   st_size_t n_out;
 };
 
-struct sp_joiner {
-  tap_t *in;
+struct sp_join {
+  tap_t in0;
   st_size_t n_in;
   stream_t out;
 };
@@ -83,7 +83,7 @@ typedef struct {
     SP_COMMAND,
     SP_FUNCTION,
     SP_SPLITTER,
-    SP_JOINER
+    SP_JOIN
   } type;
 
   union {
@@ -92,7 +92,7 @@ typedef struct {
     struct sp_command command;
     struct sp_function function;
     struct sp_splitter splitter;
-    struct sp_joiner joiner;
+    struct sp_join join;
   } u;
 } stream_processor_t;
 

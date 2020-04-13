@@ -55,6 +55,11 @@ int shallow_copy_graph_from_builder(graph_builder_t *g, struct graph *dest, cons
   return 0;
 }
 
+void shallow_destroy_graph(graph_builder_t *g, struct graph *gr) {
+  shallow_destroy_stream_processor_vec(g, &gr->sps);
+  shallow_destroy_stream_data_vec(g, &gr->stream_data);
+}
+
 stream_t create_stream(graph_builder_t *g, struct graph *gr, const char *call) {
   return create_streams(g, &gr->stream_data, 1, call);
 }

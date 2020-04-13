@@ -59,5 +59,7 @@
 #define func_t austerity_func_t
 #define NIL_STREAM AUSTERITY_NIL_STREAM
 #define STREAM_VA_END AUSTERITY_STREAM_VA_END
+#define compile_graph austerity_compile_graph
+#define program_t austerity_program_t
 
 #endif

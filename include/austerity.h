@@ -11,6 +11,8 @@ extern "C" {
 #include <sys/types.h>
 #include <unistd.h>
 
+// FIXME: lay this all out better
+
 typedef struct austerity_graph_builder austerity_graph_builder_t;
 
 austerity_graph_builder_t *austerity_create_graph_builder(void);
@@ -173,6 +175,10 @@ int austerity_function_v(austerity_graph_builder_t *g,
                          austerity_func_t *func,
                          void *user,
                          ... /* austerity_stream_t, ..., AUSTERITY_STREAM_VA_END */);
+
+typedef struct austerity_program austerity_program_t;
+
+austerity_program_t *austerity_compile_graph(austerity_graph_builder_t *g);
 
 #ifdef AUSTERITY_ABBREV
 #include "austerity-abbrev.h"

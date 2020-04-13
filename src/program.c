@@ -17,12 +17,14 @@
 #define CONTAINED_TYPE stream_t
 #include "vec.h"
 
-typedef struct austerity_program {
+struct austerity_program {
   struct {
     stream_processor_t *ary;
     size_t size;
   } sps;
-} program_t;
+};
+
+// FIXME: destructor
 
 program_t *compile_graph(graph_builder_t *g) {
   if (g == NULL) {
@@ -95,8 +97,46 @@ program_t *compile_graph(graph_builder_t *g) {
     }
   }
 
-  shallow_destroy_graph(g, &gr);
-  destroy_stream_vec(g, &to_drain);
+  if (to_drain.size > 0) {
+    tap_t join_in0;
+    stream_t joined;
+    stream_processor_t *join = create_stream_processor(g, &gr, &join_in0, to_drain.ary, to_drain.size, &joined, 1, __func__);
 
-  return NULL;
+    if (join == NULL) {
+      shallow_destroy_graph(g, &gr);
+      destroy_stream_vec(g, &to_drain);
+      return NULL;
+    }
+
+    join->type = SP_JOIN;
+    join->u.join = (struct sp_join){join_in0, to_drain.size, joined};
+
+    tap_t sink_in;
+    stream_processor_t *dev_null = create_stream_processor(g, &gr, &sink_in, &joined, 1, NULL, 0, __func__);
+
+    // FIXME: this leaks under esoteric circumstances
+    char *path;
+
+    if (dev_null == NULL || (path = copy_str(g, "/dev/null", __func__)) == NULL) {
+      shallow_destroy_graph(g, &gr);
+      destroy_stream_vec(g, &to_drain);
+      return NULL;
+    }
+
+    dev_null->type = SP_PATH_SINK;
+    dev_null->u.sink.in = sink_in;
+    dev_null->u.sink.u.path = (struct wpath){path, 0};
+  }
+
+  ASSERT(gr.stream_data.size == gr.n_taps);
+
+  program_t *prog = ialloc(g, sizeof(program_t), __func__);
+
+  if (prog == NULL) {
+    shallow_destroy_graph(g, &gr);
+    return NULL;
+  }
+
+  prog->sps.ary = move_from_stream_processor_vec(&gr.sps, &prog->sps.size);
+  return prog;
 }
