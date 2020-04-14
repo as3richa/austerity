@@ -72,7 +72,7 @@ program_t *compile_graph(graph_builder_t *g) {
       if (junc == NULL) {
         shallow_destroy_graph(g, &gr);
         destroy_stream_vec(g, &to_drain);
-        ifree(g, taps);
+        g_free(g, taps);
         return NULL;
       }
 
@@ -85,12 +85,12 @@ program_t *compile_graph(graph_builder_t *g) {
         if (tap_vec_push(g, &out_data->taps, taps[i], __func__) < 0) {
           shallow_destroy_graph(g, &gr);
           destroy_stream_vec(g, &to_drain);
-          ifree(g, taps);
+          g_free(g, taps);
           return NULL;
         }
       }
 
-      ifree(g, taps);
+      g_free(g, taps);
 
       break;
     }
@@ -100,7 +100,8 @@ program_t *compile_graph(graph_builder_t *g) {
   if (to_drain.size > 0) {
     tap_t join_in0;
     stream_t joined;
-    stream_processor_t *join = create_stream_processor(g, &gr, &join_in0, to_drain.ary, to_drain.size, &joined, 1, __func__);
+    stream_processor_t *join = create_stream_processor(
+        g, &gr, &join_in0, to_drain.ary, to_drain.size, &joined, 1, __func__);
 
     if (join == NULL) {
       shallow_destroy_graph(g, &gr);
@@ -112,12 +113,13 @@ program_t *compile_graph(graph_builder_t *g) {
     join->u.join = (struct sp_join){join_in0, to_drain.size, joined};
 
     tap_t sink_in;
-    stream_processor_t *dev_null = create_stream_processor(g, &gr, &sink_in, &joined, 1, NULL, 0, __func__);
+    stream_processor_t *dev_null =
+        create_stream_processor(g, &gr, &sink_in, &joined, 1, NULL, 0, __func__);
 
     // FIXME: this leaks under esoteric circumstances
     char *path;
 
-    if (dev_null == NULL || (path = copy_str(g, "/dev/null", __func__)) == NULL) {
+    if (dev_null == NULL || (path = g_copy_str(g, "/dev/null", __func__)) == NULL) {
       shallow_destroy_graph(g, &gr);
       destroy_stream_vec(g, &to_drain);
       return NULL;
@@ -130,7 +132,7 @@ program_t *compile_graph(graph_builder_t *g) {
 
   ASSERT(gr.stream_data.size == gr.n_taps);
 
-  program_t *prog = ialloc(g, sizeof(program_t), __func__);
+  program_t *prog = g_alloc(g, sizeof(program_t), __func__);
 
   if (prog == NULL) {
     shallow_destroy_graph(g, &gr);

@@ -36,7 +36,7 @@ static stream_t my_command_e(graph_builder_t *g,
     env = g->default_env;
   }
 
-  char *my_path = copy_str(g, path, call);
+  char *my_path = g_copy_str(g, path, call);
 
   if (my_path == NULL) {
     if (stderr != NULL) {
@@ -52,7 +52,7 @@ static stream_t my_command_e(graph_builder_t *g,
       create_stream_processor(g, &g->gr, &tap, &stdin, 1, &stdout_stderr, 2, call);
 
   if (sp == NULL) {
-    ifree(g, my_path);
+    g_free(g, my_path);
 
     if (stderr != NULL) {
       *stderr = NIL_STREAM;

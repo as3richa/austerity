@@ -21,7 +21,8 @@ void initialize_errors(struct errors *err);
 void record_einval(graph_builder_t *g, const char *call, const char *english);
 void record_alloc_failure(graph_builder_t *g, const char *call);
 
-#define NULL_CHECK(g, ident, ret, call) INVAL_CHECK(g, (ident) == NULL, #ident "is NULL", ret, call)
+#define NULL_CHECK(g, ident, ret, call)                                                            \
+  INVAL_CHECK((g), (ident) == NULL, #ident "is NULL", ret, call)
 
 #define INVAL_CHECK(g, cond, message, ret, call)                                                   \
   do {                                                                                             \

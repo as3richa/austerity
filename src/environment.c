@@ -4,7 +4,7 @@
 #include "errors.h"
 
 environment_t *create_environment(graph_builder_t *g) {
-  environment_t *env = alloc_env(g, __func__);
+  environment_t *env = g_alloc_env(g, __func__);
 
   if (env == NULL) {
     return NULL;
@@ -17,16 +17,16 @@ environment_t *create_environment(graph_builder_t *g) {
 void destroy_environment(graph_builder_t *g, environment_t *env) {
   ASSERT(g == env->g);
 
-  ifree(g, env->wd);
+  g_free(g, env->wd);
 
   const struct un_setenv_op_vec *ops = &env->un_setenv_ops;
 
   for (size_t i = 0; i < ops->capacity; i++) {
-    ifree(g, ops->ary[i].name);
-    ifree(g, ops->ary[i].value);
+    g_free(g, ops->ary[i].name);
+    g_free(g, ops->ary[i].value);
   }
 
-  ifree(g, ops->ary);
+  g_free(g, ops->ary);
 }
 
 int environment_setwd(environment_t *env, const char *path) {
@@ -39,7 +39,7 @@ int environment_setwd(environment_t *env, const char *path) {
     return -1;
   }
 
-  char *my_path = copy_str(env->g, path, __func__);
+  char *my_path = g_copy_str(env->g, path, __func__);
 
   if (my_path == NULL) {
     return -1;
@@ -77,7 +77,8 @@ struct un_setenv_op *emplace_un_setenv_op(environment_t *env, const char *call) 
     const size_t capacity = 2 * ops->capacity + 1;
     const size_t elem_size = sizeof(struct un_setenv_op);
 
-    struct un_setenv_op *ary = irealloc(env->g, ops->ary, elem_size, capacity, ops->capacity, call);
+    struct un_setenv_op *ary =
+        g_realloc(env->g, ops->ary, elem_size, capacity, ops->capacity, call);
 
     if (ary == NULL) {
       return NULL;
@@ -109,24 +110,24 @@ int environment_setenv(environment_t *env, const char *name, const char *value, 
     return -1;
   }
 
-  char *my_name = copy_str(g, name, __func__);
+  char *my_name = g_copy_str(g, name, __func__);
 
   if (my_name == NULL) {
     return -1;
   }
 
-  char *my_value = copy_str(g, value, __func__);
+  char *my_value = g_copy_str(g, value, __func__);
 
   if (my_value == NULL) {
-    ifree(g, my_name);
+    g_free(g, my_name);
     return -1;
   }
 
   struct un_setenv_op *op = emplace_un_setenv_op(env, __func__);
 
   if (op == NULL) {
-    ifree(g, my_name);
-    ifree(g, my_value);
+    g_free(g, my_name);
+    g_free(g, my_value);
     return -1;
   }
 
@@ -146,7 +147,7 @@ int environment_unsetenv(environment_t *env, const char *name) {
     return -1;
   }
 
-  char *my_name = copy_str(g, name, __func__);
+  char *my_name = g_copy_str(g, name, __func__);
 
   if (my_name == NULL) {
     return -1;
@@ -155,7 +156,7 @@ int environment_unsetenv(environment_t *env, const char *name) {
   struct un_setenv_op *op = emplace_un_setenv_op(env, __func__);
 
   if (op == NULL) {
-    ifree(g, my_name);
+    g_free(g, my_name);
     return -1;
   }
 

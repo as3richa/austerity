@@ -130,20 +130,20 @@ stream_processor_t *create_stream_processor(graph_builder_t *g,
 static void destroy_stream_processor(graph_builder_t *g, stream_processor_t *sp) {
   switch (sp->type) {
   case SP_PATH_SOURCE:
-    ifree(g, sp->u.source.u.path);
+    g_free(g, sp->u.source.u.path);
     break;
 
   case SP_STR_SOURCE:
   case SP_BUFFER_SOURCE:
-    ifree(g, sp->u.source.u.buf.bytes);
+    g_free(g, sp->u.source.u.buf.bytes);
     break;
 
   case SP_PATH_SINK:
-    ifree(g, sp->u.sink.u.path.path);
+    g_free(g, sp->u.sink.u.path.path);
     break;
 
   case SP_COMMAND:
-    ifree(g, sp->u.command.path);
+    g_free(g, sp->u.command.path);
     break;
 
   case SP_FUNCTION:

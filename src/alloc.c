@@ -1,102 +1,52 @@
 #include "alloc.h"
-#include "argv.h"
-#include "environment.h"
-#include "errors.h"
-#include "func.h"
-
+#include "allocator.h"
 #include "graph-builder.h"
 
-#define NAME env_arena
-#define CONTAINED_TYPE environment_t
-#define DESTRUCTOR destroy_environment
-#include "arena.h"
+#define CHECK_AND_RETURN_PTR(g, ptr)                                                               \
+  do {                                                                                             \
+    if ((ptr) == NULL) {                                                                           \
+      record_alloc_failure((g), call);                                                             \
+      return NULL;                                                                                 \
+    }                                                                                              \
+    return (ptr);                                                                                  \
+  } while (0)
 
-#define NAME argv_arena
-#define CONTAINED_TYPE argv_t
-#define CONSTRUCTOR initialize_argv
-#define DESTRUCTOR destroy_argv
-#include "arena.h"
-
-#define NAME func_arena
-#define CONTAINED_TYPE func_t
-#define DESTRUCTOR destroy_func
-#include "arena.h"
-
-void initialize_allocator(struct allocator *a,
-                          void *(*alloc)(void *, size_t),
-                          void (*free)(void *, void *),
-                          void *user) {
-  a->alloc = alloc;
-  a->free = free;
-  a->user = user;
-  a->argv_arena = NULL;
-  a->env_arena = NULL;
-  a->func_arena = NULL;
+void *g_alloc(graph_builder_t *g, size_t size, const char *call) {
+  void *ptr = a_alloc(&g->a, size);
+  CHECK_AND_RETURN_PTR(g, ptr);
 }
 
-void destroy_allocator(graph_builder_t *g, struct allocator *a) {
-  destroy_argv_arena(g, &a->argv_arena);
-  destroy_env_arena(g, &a->env_arena);
-  destroy_func_arena(g, &a->func_arena);
-}
-
-void *ialloc(graph_builder_t *g, size_t size, const char *call) {
-  void *ptr = (*g->a.alloc)(g->a.user, size);
-
-  if (ptr == NULL) {
-    record_alloc_failure(g, call);
-    return NULL;
-  }
-
-  return ptr;
-}
-
-void *irealloc(
+void *g_realloc(
     graph_builder_t *g, void *ptr, size_t elem_size, size_t size, size_t prev, const char *call) {
-  void *next = ialloc(g, elem_size * size, call);
-
-  if (next == NULL) {
-    return NULL;
-  }
-
-  memcpy(next, ptr, elem_size * prev);
-  ifree(g, ptr);
-
-  return next;
+  void *next = a_realloc(&g->a, ptr, elem_size, size, prev);
+  CHECK_AND_RETURN_PTR(g, next);
 }
 
-void ifree(graph_builder_t *g, void *ptr) {
-  if (ptr == NULL) {
-    return;
-  }
-
-  (*g->a.free)(g->a.user, ptr);
+void g_free(graph_builder_t *g, void *ptr) {
+  a_free(&g->a, ptr);
 }
 
-char *copy_buffer(graph_builder_t *g, const char *buffer, size_t size, const char *call) {
-  char *copy = ialloc(g, size, call);
-
-  if (copy == NULL) {
-    return NULL;
-  }
-
-  memcpy(copy, buffer, size);
-
-  return copy;
+char *g_copy_buffer(graph_builder_t *g, const char *buffer, size_t size, const char *call) {
+  char *copy = a_copy_buffer(&g->a, buffer, size);
+  CHECK_AND_RETURN_PTR(g, copy);
 }
 
-char *copy_str(graph_builder_t *g, const char *str, const char *call) {
-  return copy_buffer(g, str, strlen(str) + 1, call);
+char *g_copy_str(graph_builder_t *g, const char *str, const char *call) {
+  char *copy = a_copy_str(&g->a, str);
+  CHECK_AND_RETURN_PTR(g, copy);
 }
 
-argv_t *alloc_argv(graph_builder_t *g, const char *call) {
-  return argv_arena_alloc(g, &g->a.argv_arena, call);
+argv_t *g_alloc_argv(graph_builder_t *g, const char *call) {
+  argv_t *argv = a_alloc_argv(&g->a);
+  CHECK_AND_RETURN_PTR(g, argv);
 }
 
-environment_t *alloc_env(graph_builder_t *g, const char *call) {
-  return env_arena_alloc(g, &g->a.env_arena, call);
+environment_t *g_alloc_env(graph_builder_t *g, const char *call) {
+  environment_t *env = a_alloc_env(&g->a);
+  CHECK_AND_RETURN_PTR(g, env);
 }
 
-func_t *alloc_func(graph_builder_t *g, const char *call) {
-  return func_arena_alloc(g, &g->a.func_arena, call);
+func_t *g_alloc_func(graph_builder_t *g, const char *call) {
+  func_t *func = a_alloc_func(&g->a);
+  CHECK_AND_RETURN_PTR(g, func);
 }

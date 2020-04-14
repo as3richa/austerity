@@ -26,8 +26,8 @@ create_graph_builder_a(void *(*alloc)(void *, size_t), void (*free)(void *, void
 
 void destroy_graph_builder(graph_builder_t *g) {
   destroy_graph(g, &g->gr);
-  destroy_allocator(g, &g->a);
-  ifree(g, g);
+  destroy_allocator_arenas(&g->a);
+  a_free(&g->a, g);
 }
 
 int set_default_environment(graph_builder_t *g, environment_t *env) {

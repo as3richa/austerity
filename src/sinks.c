@@ -23,7 +23,7 @@ int fd_sink(graph_builder_t *g, int fd, stream_t in) {
 int path_sink(graph_builder_t *g, const char *path, int append, stream_t in) {
   NULL_CHECK(g, path, -1, __func__);
 
-  char *my_path = copy_str(g, path, __func__);
+  char *my_path = g_copy_str(g, path, __func__);
 
   if (my_path == NULL) {
     return -1;

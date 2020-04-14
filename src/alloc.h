@@ -3,38 +3,21 @@
 
 #include "common.h"
 
-struct allocator {
-  void *(*alloc)(void *, size_t);
-  void (*free)(void *, void *);
-  void *user;
+void *g_alloc(graph_builder_t *g, size_t size, const char *call);
 
-  struct argv_arena *argv_arena;
-  struct env_arena *env_arena;
-  struct func_arena *func_arena;
-};
-
-void initialize_allocator(struct allocator *a,
-                          void *(*alloc)(void *, size_t),
-                          void (*free)(void *, void *),
-                          void *user);
-
-void destroy_allocator(graph_builder_t *g, struct allocator *a);
-
-void *ialloc(graph_builder_t *g, size_t size, const char *call);
-
-void *irealloc(
+void *g_realloc(
     graph_builder_t *g, void *ptr, size_t elem_size, size_t size, size_t prev, const char *call);
 
-void ifree(graph_builder_t *g, void *ptr);
+void g_free(graph_builder_t *g, void *ptr);
 
-char *copy_buffer(graph_builder_t *g, const char *buffer, size_t size, const char *call);
+char *g_copy_buffer(graph_builder_t *g, const char *buffer, size_t size, const char *call);
 
-char *copy_str(graph_builder_t *g, const char *str, const char *call);
+char *g_copy_str(graph_builder_t *g, const char *str, const char *call);
 
-argv_t *alloc_argv(graph_builder_t *g, const char *call);
+argv_t *g_alloc_argv(graph_builder_t *g, const char *call);
 
-environment_t *alloc_env(graph_builder_t *g, const char *call);
+environment_t *g_alloc_env(graph_builder_t *g, const char *call);
 
-func_t *alloc_func(graph_builder_t *g, const char *call);
+func_t *g_alloc_func(graph_builder_t *g, const char *call);
 
 #endif

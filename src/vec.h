@@ -25,7 +25,7 @@ static __attribute__((unused)) void L(initialize)(TYPE *vec) {
 }
 
 static void L(shallow_destroy)(graph_builder_t *g, TYPE *vec) {
-  ifree(g, vec->ary);
+  g_free(g, vec->ary);
 }
 
 static __attribute__((unused)) void L(destroy)(graph_builder_t *g, TYPE *vec) {
@@ -52,7 +52,7 @@ M(reserve)(graph_builder_t *g, TYPE *vec, size_t n, const char *call) {
   if (vec->size + n > vec->capacity) {
     const size_t capacity = n + vec->capacity + (vec->capacity >> 1);
     CONTAINED_TYPE *ary =
-        irealloc(g, vec->ary, sizeof(CONTAINED_TYPE), capacity, vec->capacity, call);
+        g_realloc(g, vec->ary, sizeof(CONTAINED_TYPE), capacity, vec->capacity, call);
 
     if (ary == NULL) {
       return -1;
@@ -150,7 +150,7 @@ static __attribute__((unused)) int
 L(shallow_copy)(graph_builder_t *g, TYPE *dest, const TYPE *source, const char *call) {
   const size_t size = source->size;
 
-  dest->ary = ialloc(g, sizeof(CONTAINED_TYPE) * size, call);
+  dest->ary = g_alloc(g, sizeof(CONTAINED_TYPE) * size, call);
 
   if (dest->ary == NULL) {
     return -1;

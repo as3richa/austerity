@@ -5,16 +5,16 @@ func_t *create_func(graph_builder_t *g,
                     const char *name,
                     int (*callback)(void *, const int *, size_t, const int *, size_t),
                     size_t n_out) {
-  char *my_name = copy_str(g, name, __func__);
+  char *my_name = g_copy_str(g, name, __func__);
 
   if (my_name == NULL) {
     return NULL;
   }
 
-  func_t *func = alloc_func(g, __func__);
+  func_t *func = g_alloc_func(g, __func__);
 
   if (func == NULL) {
-    ifree(g, my_name);
+    g_free(g, my_name);
     return NULL;
   }
 
@@ -31,5 +31,5 @@ size_t func_n_out(const func_t *func) {
 }
 
 void destroy_func(graph_builder_t *g, func_t *func) {
-  ifree(g, func->name);
+  g_free(g, func->name);
 }

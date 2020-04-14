@@ -29,7 +29,7 @@ stream_t fd_source(graph_builder_t *g, int fd) {
 stream_t path_source(graph_builder_t *g, const char *path) {
   NULL_CHECK(g, path, NIL_STREAM, __func__);
 
-  char *my_path = copy_str(g, path, __func__);
+  char *my_path = g_copy_str(g, path, __func__);
 
   if (my_path == NULL) {
     return NIL_STREAM;
@@ -38,7 +38,7 @@ stream_t path_source(graph_builder_t *g, const char *path) {
   stream_processor_t *sp = emplace_source(g, __func__);
 
   if (sp == NULL) {
-    ifree(g, my_path);
+    g_free(g, my_path);
     return NIL_STREAM;
   }
 
@@ -95,7 +95,7 @@ static stream_t
 my_buffer_source(graph_builder_t *g, const char *buffer, size_t size, const char *call) {
   NULL_CHECK(g, buffer, NIL_STREAM, call);
 
-  char *my_buffer = copy_buffer(g, buffer, size, call);
+  char *my_buffer = g_copy_buffer(g, buffer, size, call);
 
   if (my_buffer == NULL) {
     return NIL_STREAM;
@@ -104,7 +104,7 @@ my_buffer_source(graph_builder_t *g, const char *buffer, size_t size, const char
   stream_processor_t *sp = emplace_source(g, call);
 
   if (sp == NULL) {
-    ifree(g, my_buffer);
+    g_free(g, my_buffer);
     return NIL_STREAM;
   }
 

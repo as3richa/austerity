@@ -1,5 +1,4 @@
-#include "alloc.h"
-#include "common.h"
+#include "allocator.h"
 
 #define PASTE2(x, y) x##y
 #define PASTE(x, y) PASTE2(x, y)
@@ -15,25 +14,22 @@ typedef struct NAME {
   CONTAINED_TYPE ary[];
 } TYPE;
 
-static __attribute__((unused)) void L(initialize)(TYPE **arena) {
+static void L(initialize)(TYPE **arena) {
   *arena = NULL;
 }
 
-static __attribute__((unused)) void L(destroy)(graph_builder_t *g, TYPE **arena) {
+static void L(destroy)(allocator_t *a, TYPE **arena) {
   for (TYPE *it = *arena, *next; it != NULL; it = next) {
-#ifdef DESTRUCTOR
     for (size_t i = 0; i < it->size; i++) {
-      DESTRUCTOR(g, &it->ary[i]);
+      DESTRUCTOR(a, &it->ary[i]);
     }
-#endif
 
     next = it->next;
-    ifree(g, it);
+    a_free(a, it);
   }
 }
 
-static __attribute__((unused)) CONTAINED_TYPE *
-M(alloc)(graph_builder_t *g, TYPE **arena_ref, const char *call) {
+static CONTAINED_TYPE *M(alloc)(allocator_t *a, TYPE **arena_ref) {
   TYPE *arena = *arena_ref;
   ASSERT(arena == NULL || arena->size <= arena->capacity);
 
@@ -49,7 +45,7 @@ M(alloc)(graph_builder_t *g, TYPE **arena_ref, const char *call) {
     const size_t size = sizeof(TYPE) + sizeof(CONTAINED_TYPE) * capacity;
 
     TYPE *next = arena;
-    arena = ialloc(g, size, call);
+    arena = a_alloc(a, size);
 
     if (arena == NULL) {
       return NULL;
@@ -60,21 +56,13 @@ M(alloc)(graph_builder_t *g, TYPE **arena_ref, const char *call) {
   }
 
   ASSERT(arena != NULL && arena->size < arena->capacity);
-
-  CONTAINED_TYPE *elem = &arena->ary[arena->size++];
-
-#ifdef CONSTRUCTOR
-  CONSTRUCTOR(g, elem);
-#endif
-
-  return elem;
+  return &arena->ary[arena->size++];
 }
 
 #undef HEADER
 
 #undef NAME
 #undef CONTAINED_TYPE
-#undef CONSTRUCTOR
 #undef DESTRUCTOR
 
 #undef PASTE2

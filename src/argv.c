@@ -34,7 +34,7 @@ argv_t *create_argv(graph_builder_t *g) {
     return NULL;
   }
 
-  argv_t *argv = alloc_argv(g, __func__);
+  argv_t *argv = g_alloc_argv(g, __func__);
 
   if (argv == NULL) {
     return NULL;
@@ -52,7 +52,7 @@ argv_t *create_argv_v(graph_builder_t *g, ... /* const char *, ..., NULL */) {
     return NULL;
   }
 
-  argv_t *argv = alloc_argv(g, __func__);
+  argv_t *argv = g_alloc_argv(g, __func__);
 
   if (argv == NULL) {
     return NULL;
@@ -118,7 +118,7 @@ int argv_push_strs(argv_t *argv, char *const *const args, size_t n_args) {
   }
 
   for (size_t i = 0; i < n_args; i++) {
-    char *my_str = copy_str(g, args[i], __func__);
+    char *my_str = g_copy_str(g, args[i], __func__);
 
     if (my_str == NULL) {
       argv_vec_pop_n(g, &argv->args, n_args - i);
@@ -228,7 +228,7 @@ static int push_str(argv_t *argv, const char *str, const char *call) {
 
   NULL_CHECK(g, str, -1, call);
 
-  char *my_str = copy_str(g, str, call);
+  char *my_str = g_copy_str(g, str, call);
 
   if (my_str == NULL) {
     return -1;
@@ -237,7 +237,7 @@ static int push_str(argv_t *argv, const char *str, const char *call) {
   struct argv_arg *arg = argv_vec_emplace(g, &argv->args, call);
 
   if (arg == NULL) {
-    ifree(g, my_str);
+    g_free(g, my_str);
     return -1;
   }
 
@@ -253,5 +253,5 @@ static void destroy_arg(graph_builder_t *g, struct argv_arg *arg) {
     return;
   }
 
-  ifree(g, arg->u.str);
+  g_free(g, arg->u.str);
 }
