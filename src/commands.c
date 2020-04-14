@@ -4,16 +4,17 @@
 #include "graph.h"
 #include "stream-processor.h"
 
-static stream_t my_command_e(graph_builder_t *g,
+static stream_t my_command_e(graph_t *graph,
                              stream_t *stderr,
                              const char *path,
                              argv_t *argv,
                              environment_t *env,
                              stream_t stdin,
-                             const char *call);
+                             allocator_t *alc,
+                             errors_t *errors);
 
 stream_t command(graph_builder_t *g, const char *path, argv_t *argv, stream_t stdin) {
-  return my_command_e(g, NULL, path, argv, NULL, stdin, __func__);
+  return my_command_e(&g->graph, NULL, path, argv, NULL, stdin, &g->alc, &g->errors);
 }
 
 stream_t command_e(graph_builder_t *g,
@@ -22,21 +23,22 @@ stream_t command_e(graph_builder_t *g,
                    const char *path,
                    argv_t *argv,
                    stream_t stdin) {
-  return my_command_e(g, stderr, path, argv, env, stdin, __func__);
+  if (env == NULL) {
+    env = g->default_env;
+  }
+
+  return my_command_e(&g->graph, stderr, path, argv, env, stdin, &g->alc, &g->errors);
 }
 
-static stream_t my_command_e(graph_builder_t *g,
+static stream_t my_command_e(graph_t *graph,
                              stream_t *stderr,
                              const char *path,
                              argv_t *argv,
                              environment_t *env,
                              stream_t stdin,
-                             const char *call) {
-  if (env == NULL) {
-    env = g->default_env;
-  }
-
-  char *my_path = g_copy_str(g, path, call);
+                             allocator_t *alc,
+                             errors_t *errors) {
+  char *my_path = a_copy_str(alc, path, errors);
 
   if (my_path == NULL) {
     if (stderr != NULL) {
@@ -49,10 +51,10 @@ static stream_t my_command_e(graph_builder_t *g,
   tap_t tap;
   stream_t stdout_stderr;
   stream_processor_t *sp =
-      create_stream_processor(g, &g->gr, &tap, &stdin, 1, &stdout_stderr, 2, call);
+      create_stream_processor(graph, &tap, &stdin, 1, &stdout_stderr, 2, alc, errors);
 
   if (sp == NULL) {
-    g_free(g, my_path);
+    a_free(alc, my_path);
 
     if (stderr != NULL) {
       *stderr = NIL_STREAM;

@@ -1,35 +1,31 @@
 #ifndef ENVIRONMENT_H
 #define ENVIRONMENT_H
 
+#include "allocator.h"
 #include "common.h"
+
+struct env_op;
+
+#define TYPE_ONLY
+#define NAME env_op_vec
+#define CONTAINED_TYPE struct env_op
+#include "vec.h"
 
 struct austerity_environment {
   graph_builder_t *g;
 
   char *wd;
 
-  unsigned int clearenv : 1;
-
-  struct un_setenv_op_vec {
-    struct un_setenv_op {
-      unsigned int set : 1;
-      unsigned int overwrite : 1;
-      char *name;
-      char *value;
-    } * ary;
-
-    size_t size;
-    size_t capacity;
-  } un_setenv_ops;
-
   uid_t ruid, euid;
   gid_t rgid, egid;
+
+  unsigned int clearenv : 1;
+
+  env_op_vec_t ops;
 };
 
-void initialize_environment(graph_builder_t *g, environment_t *env);
+void destroy_environment(environment_t *env, allocator_t *alc);
 
-void destroy_environment(graph_builder_t *g, environment_t *env);
-
-int apply_environment(error_t *err, const environment_t *env);
+int apply_environment(const environment_t *env, errors_t *error);
 
 #endif

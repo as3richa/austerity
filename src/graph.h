@@ -23,28 +23,28 @@ typedef struct {
 #define CONTAINED_TYPE stream_data_t
 #include "vec.h"
 
-struct graph {
+typedef struct {
   stream_processor_vec_t sps;
   stream_data_vec_t stream_data;
   st_size_t n_taps;
-};
+} graph_t;
 
-void initialize_graph(struct graph *gr);
-void destroy_graph(graph_builder_t *g, struct graph *gr);
+void initialize_graph(graph_t *graph);
+void destroy_graph(graph_t *graph, allocator_t *alc);
 
-int shallow_copy_graph_from_builder(graph_builder_t *g, struct graph *dest, const char *call);
-void shallow_destroy_graph(graph_builder_t *g, struct graph *gr);
+int shallow_copy_graph(graph_t *to, graph_t *from, allocator_t *alc, errors_t *errors);
+void shallow_destroy_graph(graph_t *graph, allocator_t *alc);
 
-stream_t create_stream(graph_builder_t *g, struct graph *gr, const char *call);
-tap_t tap_stream(graph_builder_t *g, struct graph *gr, stream_t stream, const char *call);
+stream_t create_stream(graph_t *graph, allocator_t *alc, errors_t *errors);
+tap_t tap_stream(graph_t *graph, stream_t stream, allocator_t *alc, errors_t *errors);
 
-stream_processor_t *create_stream_processor(graph_builder_t *g,
-                                            struct graph *gr,
+stream_processor_t *create_stream_processor(graph_t *gr,
                                             tap_t *tap0,
                                             const stream_t *in,
                                             size_t n_in,
                                             stream_t *out0,
                                             size_t n_out,
-                                            const char *call);
+                                            allocator_t *alc,
+                                            errors_t *errors);
 
 #endif

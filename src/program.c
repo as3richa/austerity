@@ -31,25 +31,28 @@ program_t *compile_graph(graph_builder_t *g) {
     return NULL;
   }
 
-  struct graph gr;
+  allocator_t *alc = &g->alc;
+  errors_t *errors = &g->errors;
 
-  if (shallow_copy_graph_from_builder(g, &gr, __func__) < 0) {
+  graph_t graph;
+
+  if (shallow_copy_graph(&graph, &g->graph, alc, errors) < 0) {
     return NULL;
   }
 
   stream_vec_t to_drain;
   initialize_stream_vec(&to_drain);
 
-  const size_t orig_sd_size = g->gr.stream_data.size;
+  const size_t orig_sd_size = g->graph.stream_data.size;
 
   for (stream_t stream = 0; stream < orig_sd_size; stream++) {
-    stream_data_t *data = &gr.stream_data.ary[stream];
+    stream_data_t *data = &graph.stream_data.ary[stream];
 
     switch (data->taps.size) {
     case 0: {
-      if (stream_vec_push(g, &to_drain, stream, __func__) < 0) {
-        shallow_destroy_graph(g, &gr);
-        destroy_stream_vec(g, &to_drain);
+      if (stream_vec_push(&to_drain, stream, alc, errors) < 0) {
+        shallow_destroy_graph(&graph, alc);
+        destroy_stream_vec(&to_drain, alc);
         return NULL;
       }
 
@@ -67,12 +70,12 @@ program_t *compile_graph(graph_builder_t *g) {
       tap_t in;
       stream_t out0;
       stream_processor_t *junc =
-          create_stream_processor(g, &gr, &in, &stream, 1, &out0, data->taps.size, __func__);
+          create_stream_processor(&graph, &in, &stream, 1, &out0, data->taps.size, alc, errors);
 
       if (junc == NULL) {
-        shallow_destroy_graph(g, &gr);
-        destroy_stream_vec(g, &to_drain);
-        g_free(g, taps);
+        shallow_destroy_graph(&graph, alc);
+        destroy_stream_vec(&to_drain, alc);
+        a_free(alc, taps);
         return NULL;
       }
 
@@ -80,17 +83,17 @@ program_t *compile_graph(graph_builder_t *g) {
       junc->u.splitter = (struct sp_splitter){in, out0, n_out};
 
       for (size_t i = 0; i < n_out; i++) {
-        stream_data_t *out_data = &gr.stream_data.ary[out0 + i];
+        stream_data_t *out_data = &graph.stream_data.ary[out0 + i];
 
-        if (tap_vec_push(g, &out_data->taps, taps[i], __func__) < 0) {
-          shallow_destroy_graph(g, &gr);
-          destroy_stream_vec(g, &to_drain);
-          g_free(g, taps);
+        if (tap_vec_push(&out_data->taps, taps[i], alc, errors) < 0) {
+          shallow_destroy_graph(&graph, alc);
+          destroy_stream_vec(&to_drain, alc);
+          a_free(alc, taps);
           return NULL;
         }
       }
 
-      g_free(g, taps);
+      a_free(alc, taps);
 
       break;
     }
@@ -101,11 +104,11 @@ program_t *compile_graph(graph_builder_t *g) {
     tap_t join_in0;
     stream_t joined;
     stream_processor_t *join = create_stream_processor(
-        g, &gr, &join_in0, to_drain.ary, to_drain.size, &joined, 1, __func__);
+        &graph, &join_in0, to_drain.ary, to_drain.size, &joined, 1, alc, errors);
 
     if (join == NULL) {
-      shallow_destroy_graph(g, &gr);
-      destroy_stream_vec(g, &to_drain);
+      shallow_destroy_graph(&graph, alc);
+      destroy_stream_vec(&to_drain, alc);
       return NULL;
     }
 
@@ -114,14 +117,14 @@ program_t *compile_graph(graph_builder_t *g) {
 
     tap_t sink_in;
     stream_processor_t *dev_null =
-        create_stream_processor(g, &gr, &sink_in, &joined, 1, NULL, 0, __func__);
+        create_stream_processor(&graph, &sink_in, &joined, 1, NULL, 0, alc, errors);
 
     // FIXME: this leaks under esoteric circumstances
     char *path;
 
-    if (dev_null == NULL || (path = g_copy_str(g, "/dev/null", __func__)) == NULL) {
-      shallow_destroy_graph(g, &gr);
-      destroy_stream_vec(g, &to_drain);
+    if (dev_null == NULL || (path = a_copy_str(alc, "/dev/null", errors)) == NULL) {
+      shallow_destroy_graph(&graph, alc);
+      destroy_stream_vec(&to_drain, alc);
       return NULL;
     }
 
@@ -130,15 +133,15 @@ program_t *compile_graph(graph_builder_t *g) {
     dev_null->u.sink.u.path = (struct wpath){path, 0};
   }
 
-  ASSERT(gr.stream_data.size == gr.n_taps);
+  ASSERT(graph.stream_data.size == graph.n_taps);
 
-  program_t *prog = g_alloc(g, sizeof(program_t), __func__);
+  program_t *prog = a_alloc(alc, sizeof(program_t), errors);
 
   if (prog == NULL) {
-    shallow_destroy_graph(g, &gr);
+    shallow_destroy_graph(&graph, alc);
     return NULL;
   }
 
-  prog->sps.ary = move_from_stream_processor_vec(&gr.sps, &prog->sps.size);
+  prog->sps.ary = move_from_stream_processor_vec(&graph.sps, &prog->sps.size);
   return prog;
 }

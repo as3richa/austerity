@@ -3,18 +3,20 @@
 #include "graph-builder.h"
 #include "graph.h"
 
-static stream_processor_t *emplace_source(graph_builder_t *g, const char *call);
+static stream_processor_t *emplace_source(graph_t *graph, allocator_t *alc, errors_t *errors);
 
-static stream_t
-my_buffer_source(graph_builder_t *g, const char *buffer, size_t size, const char *call);
+static stream_t my_buffer_source(
+    graph_t *graph, const char *buffer, size_t size, allocator_t *alc, errors_t *errors);
 
-static stream_t
-my_static_buffer_source(graph_builder_t *g, const char *buffer, size_t size, const char *call);
+static stream_t my_static_buffer_source(
+    graph_t *graph, const char *buffer, size_t size, allocator_t *alc, errors_t *errors);
 
 stream_t fd_source(graph_builder_t *g, int fd) {
-  INVAL_CHECK(g, fd < 0, "fd is negative", NIL_STREAM, __func__);
+  errors_t *errors = &g->errors;
 
-  stream_processor_t *sp = emplace_source(g, __func__);
+  CHECK_INVAL(fd < 0, "fd is negative", NIL_STREAM, errors);
+
+  stream_processor_t *sp = emplace_source(&g->graph, &g->alc, errors);
 
   if (sp == NULL) {
     return NIL_STREAM;
@@ -27,18 +29,21 @@ stream_t fd_source(graph_builder_t *g, int fd) {
 }
 
 stream_t path_source(graph_builder_t *g, const char *path) {
-  NULL_CHECK(g, path, NIL_STREAM, __func__);
+  errors_t *errors = &g->errors;
+  allocator_t *alc = &g->alc;
 
-  char *my_path = g_copy_str(g, path, __func__);
+  CHECK_IF_NULL(path, NIL_STREAM, errors);
+
+  char *my_path = a_copy_str(alc, path, errors);
 
   if (my_path == NULL) {
     return NIL_STREAM;
   }
 
-  stream_processor_t *sp = emplace_source(g, __func__);
+  stream_processor_t *sp = emplace_source(&g->graph, alc, errors);
 
   if (sp == NULL) {
-    g_free(g, my_path);
+    a_free(alc, my_path);
     return NIL_STREAM;
   }
 
@@ -49,9 +54,11 @@ stream_t path_source(graph_builder_t *g, const char *path) {
 }
 
 stream_t c_file_source(graph_builder_t *g, FILE *c_file) {
-  NULL_CHECK(g, c_file, NIL_STREAM, __func__);
+  errors_t *errors = &g->errors;
 
-  stream_processor_t *sp = emplace_source(g, __func__);
+  CHECK_IF_NULL(c_file, NIL_STREAM, errors);
+
+  stream_processor_t *sp = emplace_source(&g->graph, &g->alc, errors);
 
   if (sp == NULL) {
     return NIL_STREAM;
@@ -64,24 +71,24 @@ stream_t c_file_source(graph_builder_t *g, FILE *c_file) {
 }
 
 stream_t str_source(graph_builder_t *g, const char *str) {
-  return my_buffer_source(g, str, strlen(str), __func__);
+  return my_buffer_source(&g->graph, str, strlen(str), &g->alc, &g->errors);
 }
 
 stream_t static_str_source(graph_builder_t *g, const char *str) {
-  return my_static_buffer_source(g, str, strlen(str), __func__);
+  return my_static_buffer_source(&g->graph, str, strlen(str), &g->alc, &g->errors);
 }
 
 stream_t buffer_source(graph_builder_t *g, const char *buffer, size_t size) {
-  return my_buffer_source(g, buffer, size, __func__);
+  return my_buffer_source(&g->graph, buffer, size, &g->alc, &g->errors);
 }
 
 stream_t static_buffer_source(graph_builder_t *g, const char *buffer, size_t size) {
-  return my_static_buffer_source(g, buffer, size, __func__);
+  return my_static_buffer_source(&g->graph, buffer, size, &g->alc, &g->errors);
 }
 
-static stream_processor_t *emplace_source(graph_builder_t *g, const char *call) {
+static stream_processor_t *emplace_source(graph_t *graph, allocator_t *alc, errors_t *errors) {
   stream_t out;
-  stream_processor_t *sp = create_stream_processor(g, &g->gr, NULL, NULL, 0, &out, 1, call);
+  stream_processor_t *sp = create_stream_processor(graph, NULL, NULL, 0, &out, 1, alc, errors);
 
   if (sp == NULL) {
     return NULL;
@@ -91,20 +98,20 @@ static stream_processor_t *emplace_source(graph_builder_t *g, const char *call) 
   return sp;
 }
 
-static stream_t
-my_buffer_source(graph_builder_t *g, const char *buffer, size_t size, const char *call) {
-  NULL_CHECK(g, buffer, NIL_STREAM, call);
+static stream_t my_buffer_source(
+    graph_t *graph, const char *buffer, size_t size, allocator_t *alc, errors_t *errors) {
+  CHECK_IF_NULL(buffer, NIL_STREAM, errors);
 
-  char *my_buffer = g_copy_buffer(g, buffer, size, call);
+  char *my_buffer = a_copy_buffer(alc, buffer, size, errors);
 
   if (my_buffer == NULL) {
     return NIL_STREAM;
   }
 
-  stream_processor_t *sp = emplace_source(g, call);
+  stream_processor_t *sp = emplace_source(graph, alc, errors);
 
   if (sp == NULL) {
-    g_free(g, my_buffer);
+    a_free(alc, my_buffer);
     return NIL_STREAM;
   }
 
@@ -114,11 +121,11 @@ my_buffer_source(graph_builder_t *g, const char *buffer, size_t size, const char
   return sp->u.source.out;
 }
 
-static stream_t
-my_static_buffer_source(graph_builder_t *g, const char *buffer, size_t size, const char *call) {
-  NULL_CHECK(g, buffer, NIL_STREAM, call);
+static stream_t my_static_buffer_source(
+    graph_t *graph, const char *buffer, size_t size, allocator_t *alc, errors_t *errors) {
+  CHECK_IF_NULL(buffer, NIL_STREAM, errors);
 
-  stream_processor_t *sp = emplace_source(g, call);
+  stream_processor_t *sp = emplace_source(graph, alc, errors);
 
   if (sp == NULL) {
     return NIL_STREAM;

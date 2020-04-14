@@ -18,18 +18,18 @@ static void L(initialize)(TYPE **arena) {
   *arena = NULL;
 }
 
-static void L(destroy)(allocator_t *a, TYPE **arena) {
+static void L(destroy)(TYPE **arena, allocator_t *alc) {
   for (TYPE *it = *arena, *next; it != NULL; it = next) {
     for (size_t i = 0; i < it->size; i++) {
-      DESTRUCTOR(a, &it->ary[i]);
+      DESTRUCTOR(&it->ary[i], alc);
     }
 
     next = it->next;
-    a_free(a, it);
+    a_free(alc, it);
   }
 }
 
-static CONTAINED_TYPE *M(alloc)(allocator_t *a, TYPE **arena_ref) {
+static CONTAINED_TYPE *M(alloc)(allocator_t *alc, TYPE **arena_ref, errors_t *errors) {
   TYPE *arena = *arena_ref;
   ASSERT(arena == NULL || arena->size <= arena->capacity);
 
@@ -45,7 +45,7 @@ static CONTAINED_TYPE *M(alloc)(allocator_t *a, TYPE **arena_ref) {
     const size_t size = sizeof(TYPE) + sizeof(CONTAINED_TYPE) * capacity;
 
     TYPE *next = arena;
-    arena = a_alloc(a, size);
+    arena = a_alloc(alc, size, errors);
 
     if (arena == NULL) {
       return NULL;

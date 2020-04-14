@@ -19,7 +19,7 @@ struct austerity_argv {
   unsigned int has_outputs : 1;
 };
 
-void initialize_argv(graph_builder_t *g, argv_t *argv);
-void destroy_argv(graph_builder_t *g, argv_t *argv);
+void initialize_argv(argv_t *argv, graph_builder_t *g);
+void destroy_argv(argv_t *argv, allocator_t *alc);
 
 #endif

@@ -1,6 +1,7 @@
 #ifndef FUNC_H
-#define FUCN_H
+#define FUNC_H
 
+#include "allocator.h"
 #include "common.h"
 
 struct austerity_func {
@@ -9,6 +10,6 @@ struct austerity_func {
   size_t n_out;
 };
 
-void destroy_func(graph_builder_t *g, func_t *func);
+void destroy_func(func_t *func, allocator_t *alc);
 
 #endif

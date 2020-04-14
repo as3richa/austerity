@@ -1,4 +1,4 @@
-#include "alloc.h"
+#include "allocator.h"
 #include "common.h"
 
 #define PASTE2(x, y) x##y
@@ -24,18 +24,22 @@ static __attribute__((unused)) void L(initialize)(TYPE *vec) {
   *vec = (TYPE){NULL, 0, 0};
 }
 
-static void L(shallow_destroy)(graph_builder_t *g, TYPE *vec) {
-  g_free(g, vec->ary);
+static void L(shallow_destroy)(TYPE *vec, allocator_t *alc) {
+  a_free(alc, vec->ary);
 }
 
-static __attribute__((unused)) void L(destroy)(graph_builder_t *g, TYPE *vec) {
+static __attribute__((unused)) void L(destroy)(TYPE *vec, allocator_t *alc) {
 #ifdef DESTRUCTOR
   for (size_t i = 0; i < vec->size; i++) {
-    DESTRUCTOR(g, &vec->ary[i]);
+    DESTRUCTOR(&vec->ary[i], alc);
   }
 #endif
 
-  L(shallow_destroy)(g, vec);
+  L(shallow_destroy)(vec, alc);
+}
+
+static __attribute__((unused)) void L(clear)(TYPE *vec) {
+  vec->size = 0;
 }
 
 static __attribute__((unused)) CONTAINED_TYPE *L(move_from)(TYPE *vec, size_t *size) {
@@ -46,13 +50,13 @@ static __attribute__((unused)) CONTAINED_TYPE *L(move_from)(TYPE *vec, size_t *s
 }
 
 static __attribute__((unused)) int
-M(reserve)(graph_builder_t *g, TYPE *vec, size_t n, const char *call) {
+M(reserve)(TYPE *vec, size_t n, allocator_t *alc, errors_t *errors) {
   ASSERT(vec->size <= vec->capacity);
 
   if (vec->size + n > vec->capacity) {
     const size_t capacity = n + vec->capacity + (vec->capacity >> 1);
     CONTAINED_TYPE *ary =
-        g_realloc(g, vec->ary, sizeof(CONTAINED_TYPE), capacity, vec->capacity, call);
+        a_realloc(alc, vec->ary, sizeof(CONTAINED_TYPE), capacity, vec->capacity, errors);
 
     if (ary == NULL) {
       return -1;
@@ -67,8 +71,8 @@ M(reserve)(graph_builder_t *g, TYPE *vec, size_t n, const char *call) {
 }
 
 static __attribute__((unused)) CONTAINED_TYPE *
-M(emplace_n)(graph_builder_t *g, TYPE *vec, size_t n, const char *call) {
-  if (M(reserve(g, vec, n, call)) < 0) {
+M(emplace_n)(TYPE *vec, size_t n, allocator_t *alc, errors_t *errors) {
+  if (M(reserve(vec, n, alc, errors)) < 0) {
     return NULL;
   }
 
@@ -81,8 +85,8 @@ M(emplace_n)(graph_builder_t *g, TYPE *vec, size_t n, const char *call) {
 }
 
 static __attribute__((unused)) CONTAINED_TYPE *
-M(emplace)(graph_builder_t *g, TYPE *vec, const char *call) {
-  return M(emplace_n)(g, vec, 1, call);
+M(emplace)(TYPE *vec, allocator_t *alc, errors_t *errors) {
+  return M(emplace_n)(vec, 1, alc, errors);
 }
 
 static __attribute__((unused)) void M(unemplace)(TYPE *vec) {
@@ -91,8 +95,8 @@ static __attribute__((unused)) void M(unemplace)(TYPE *vec) {
 }
 
 static __attribute__((unused)) int
-M(push)(graph_builder_t *g, TYPE *vec, CONTAINED_TYPE value, const char *call) {
-  CONTAINED_TYPE *ptr = M(emplace)(g, vec, call);
+M(push)(TYPE *vec, CONTAINED_TYPE value, allocator_t *alc, errors_t *errors) {
+  CONTAINED_TYPE *ptr = M(emplace)(vec, alc, errors);
 
   if (ptr == NULL) {
     return -1;
@@ -102,29 +106,29 @@ M(push)(graph_builder_t *g, TYPE *vec, CONTAINED_TYPE value, const char *call) {
   return 0;
 }
 
-static __attribute__((unused)) void M(pop_n)(graph_builder_t *g, TYPE *vec, size_t n) {
+static __attribute__((unused)) void M(pop_n)(TYPE *vec, size_t n, allocator_t *alc) {
   ASSERT(vec->size >= n);
 
 #ifdef DESTRUCTOR
   for (size_t i = 1; i <= n; i++) {
-    DESTRUCTOR(g, &vec->ary[vec->size - i]);
+    DESTRUCTOR(&vec->ary[vec->size - i], alc);
   }
 #else
-  (void)g;
+  (void)alc;
 #endif
 
   vec->size -= n;
 }
 
 static __attribute__((unused)) int
-M(extend)(graph_builder_t *g, TYPE *vec, size_t n, CONTAINED_TYPE value, const char *call) {
+M(extend)(TYPE *vec, size_t n, CONTAINED_TYPE value, allocator_t *alc, errors_t *errors) {
   if (n <= vec->size) {
     return 0;
   }
 
   const size_t delta = n - vec->size;
 
-  if (M(reserve)(g, vec, delta, call) < 0) {
+  if (M(reserve)(vec, delta, alc, errors) < 0) {
     return -1;
   }
 
@@ -147,10 +151,10 @@ static __attribute__((unused)) CONTAINED_TYPE const *M(const_ref)(const TYPE *ve
 }
 
 static __attribute__((unused)) int
-L(shallow_copy)(graph_builder_t *g, TYPE *dest, const TYPE *source, const char *call) {
+L(shallow_copy)(TYPE *dest, const TYPE *source, allocator_t *alc, errors_t *errors) {
   const size_t size = source->size;
 
-  dest->ary = g_alloc(g, sizeof(CONTAINED_TYPE) * size, call);
+  dest->ary = a_alloc(alc, sizeof(CONTAINED_TYPE) * size, errors);
 
   if (dest->ary == NULL) {
     return -1;

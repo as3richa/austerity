@@ -17,21 +17,22 @@ create_graph_builder_a(void *(*alloc)(void *, size_t), void (*free)(void *, void
   }
 
   g->default_env = NULL;
-  initialize_graph(&g->gr);
+  initialize_graph(&g->graph);
   initialize_errors(&g->errors);
-  initialize_allocator(&g->a, alloc, free, user);
+  initialize_allocator(&g->alc, alloc, free, user);
 
   return g;
 }
 
 void destroy_graph_builder(graph_builder_t *g) {
-  destroy_graph(g, &g->gr);
-  destroy_allocator_arenas(&g->a);
-  a_free(&g->a, g);
+  allocator_t *alc = &g->alc;
+  destroy_graph(&g->graph, alc);
+  destroy_allocator_arenas(alc);
+  a_free(alc, g);
 }
 
 int set_default_environment(graph_builder_t *g, environment_t *env) {
-  NULL_CHECK(g, env, -1, __func__);
+  CHECK_IF_NULL(env, -1, &g->errors);
   g->default_env = env;
   return 0;
 }

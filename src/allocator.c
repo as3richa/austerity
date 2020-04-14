@@ -1,6 +1,7 @@
 #include "allocator.h"
 #include "argv.h"
 #include "environment.h"
+#include "errors.h"
 #include "func.h"
 
 #define NAME argv_arena
@@ -18,49 +19,68 @@
 #define DESTRUCTOR destroy_func
 #include "arena.h"
 
-void initialize_allocator(allocator_t *a,
+void initialize_allocator(allocator_t *alc,
                           void *(*alloc)(void *, size_t),
                           void (*free)(void *, void *),
                           void *user) {
-  a->alloc = alloc;
-  a->free = free;
-  a->user = user;
-  initialize_argv_arena(&a->argv_arena);
-  initialize_env_arena(&a->env_arena);
-  initialize_func_arena(&a->func_arena);
+  alc->alloc = alloc;
+  alc->free = free;
+  alc->user = user;
+  initialize_argv_arena(&alc->argv_arena);
+  initialize_env_arena(&alc->env_arena);
+  initialize_func_arena(&alc->func_arena);
 }
 
-void destroy_allocator_arenas(allocator_t *a) {
-  destroy_argv_arena(a, &a->argv_arena);
-  destroy_env_arena(a, &a->env_arena);
-  destroy_func_arena(a, &a->func_arena);
+void destroy_allocator_arenas(allocator_t *alc) {
+  destroy_argv_arena(&alc->argv_arena, alc);
+  destroy_env_arena(&alc->env_arena, alc);
+  destroy_func_arena(&alc->func_arena, alc);
 }
 
-void *a_alloc(const allocator_t *a, size_t size) {
-  return (*a->alloc)(a->user, size);
+#define CHECK_AND_RETURN_PTR(ptr, errors)                                                          \
+  do {                                                                                             \
+    if ((ptr) == NULL) {                                                                           \
+      record_alloc_failure(errors);                                                                \
+      return NULL;                                                                                 \
+    }                                                                                              \
+    return (ptr);                                                                                  \
+  } while (0)
+
+void *a_alloc(const allocator_t *alc, size_t size, errors_t *errors) {
+  void *ptr = (*alc->alloc)(alc->user, size);
+  CHECK_AND_RETURN_PTR(ptr, errors);
 }
 
-void *a_realloc(const allocator_t *a, void *ptr, size_t elem_size, size_t size, size_t prev) {
+void *a_realloc(const allocator_t *alc,
+                void *ptr,
+                size_t elem_size,
+                size_t size,
+                size_t prev,
+                errors_t *errors) {
   ASSERT(size > prev);
 
-  void *next = a_alloc(a, elem_size * size);
+  void *next = a_alloc(alc, elem_size * size, errors);
 
   if (next == NULL) {
+    record_alloc_failure(errors);
     return NULL;
   }
 
   memcpy(next, ptr, elem_size * prev);
+  a_free(alc, ptr);
+
   return next;
 }
 
-void a_free(const allocator_t *a, void *ptr) {
-  (*a->free)(a->user, ptr);
+void a_free(const allocator_t *alc, void *ptr) {
+  (*alc->free)(alc->user, ptr);
 }
 
-char *a_copy_buffer(const allocator_t *a, const char *buffer, size_t size) {
-  char *copy = a_alloc(a, size);
+char *a_copy_buffer(const allocator_t *alc, const char *buffer, size_t size, errors_t *errors) {
+  char *copy = a_alloc(alc, size, errors);
 
   if (copy == NULL) {
+    record_alloc_failure(errors);
     return NULL;
   }
 
@@ -68,18 +88,21 @@ char *a_copy_buffer(const allocator_t *a, const char *buffer, size_t size) {
   return copy;
 }
 
-char *a_copy_str(const allocator_t *a, const char *str) {
-  return a_copy_buffer(a, str, strlen(str) + 1);
+char *a_copy_str(const allocator_t *alc, const char *str, errors_t *errors) {
+  return a_copy_buffer(alc, str, strlen(str) + 1, errors);
 }
 
-argv_t *a_alloc_argv(allocator_t *a) {
-  return argv_arena_alloc(a, &a->argv_arena);
+argv_t *a_alloc_argv(allocator_t *alc, errors_t *errors) {
+  argv_t *argv = argv_arena_alloc(alc, &alc->argv_arena, errors);
+  CHECK_AND_RETURN_PTR(argv, errors);
 }
 
-environment_t *a_alloc_env(allocator_t *a) {
-  return env_arena_alloc(a, &a->env_arena);
+environment_t *a_alloc_env(allocator_t *alc, errors_t *errors) {
+  environment_t *env = env_arena_alloc(alc, &alc->env_arena, errors);
+  CHECK_AND_RETURN_PTR(env, errors);
 }
 
-func_t *a_alloc_func(allocator_t *a) {
-  return func_arena_alloc(a, &a->func_arena);
+func_t *a_alloc_func(allocator_t *alc, errors_t *errors) {
+  func_t *func = func_arena_alloc(alc, &alc->func_arena, errors);
+  CHECK_AND_RETURN_PTR(func, errors);
 }

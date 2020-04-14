@@ -1,32 +1,52 @@
 #include "environment.h"
-#include "alloc.h"
 #include "common.h"
 #include "errors.h"
+#include "graph-builder.h"
+
+struct env_op {
+  unsigned int set : 1;
+  unsigned int overwrite : 1;
+  char *name;
+  char *value;
+};
+
+static void destroy_env_op(struct env_op *op, allocator_t *alc);
+
+#define METHODS_ONLY
+#define NAME env_op_vec
+#define CONTAINED_TYPE struct env_op
+#define DESTRUCTOR destroy_env_op
+#include "vec.h"
 
 environment_t *create_environment(graph_builder_t *g) {
-  environment_t *env = g_alloc_env(g, __func__);
+  allocator_t *alc = &g->alc;
+  errors_t *errors = &g->errors;
+
+  environment_t *env = a_alloc_env(alc, errors);
 
   if (env == NULL) {
     return NULL;
   }
 
-  *env = (environment_t){g, NULL, 1, (struct un_setenv_op_vec){NULL, 0, 0}, -1, -1, -1, -1};
+  env->g = g;
+  env->wd = NULL;
+  env->ruid = -1;
+  env->euid = -1;
+  env->rgid = -1;
+  env->egid = -1;
+  env->clearenv = 1;
+  initialize_env_op_vec(&env->ops);
+
   return env;
 }
 
-void destroy_environment(graph_builder_t *g, environment_t *env) {
-  ASSERT(g == env->g);
-
-  g_free(g, env->wd);
-
-  const struct un_setenv_op_vec *ops = &env->un_setenv_ops;
-
-  for (size_t i = 0; i < ops->capacity; i++) {
-    g_free(g, ops->ary[i].name);
-    g_free(g, ops->ary[i].value);
+void destroy_environment(environment_t *env, allocator_t *alc) {
+  if (env == NULL) {
+    return;
   }
 
-  g_free(g, ops->ary);
+  a_free(alc, env->wd);
+  destroy_env_op_vec(&env->ops, alc);
 }
 
 int environment_setwd(environment_t *env, const char *path) {
@@ -34,12 +54,13 @@ int environment_setwd(environment_t *env, const char *path) {
     return -1;
   }
 
-  if (path == NULL) {
-    record_einval(env->g, __func__, "path is NULL");
-    return -1;
-  }
+  graph_builder_t *g = env->g;
+  allocator_t *alc = &g->alc;
+  errors_t *errors = &g->errors;
 
-  char *my_path = g_copy_str(env->g, path, __func__);
+  CHECK_IF_NULL(path, -1, errors);
+
+  char *my_path = a_copy_str(alc, path, errors);
 
   if (my_path == NULL) {
     return -1;
@@ -64,33 +85,9 @@ int environment_clearenv(environment_t *env) {
   }
 
   env->clearenv = 1;
-  env->un_setenv_ops.size = 0;
+  clear_env_op_vec(&env->ops);
+
   return 0;
-}
-
-struct un_setenv_op *emplace_un_setenv_op(environment_t *env, const char *call) {
-  struct un_setenv_op_vec *ops = &env->un_setenv_ops;
-
-  ASSERT(ops->size <= ops->capacity);
-
-  if (ops->size == ops->capacity) {
-    const size_t capacity = 2 * ops->capacity + 1;
-    const size_t elem_size = sizeof(struct un_setenv_op);
-
-    struct un_setenv_op *ary =
-        g_realloc(env->g, ops->ary, elem_size, capacity, ops->capacity, call);
-
-    if (ary == NULL) {
-      return NULL;
-    }
-
-    ops->ary = ary;
-    ops->capacity = capacity;
-  }
-
-  ASSERT(ops->size < ops->capacity);
-
-  return &ops->ary[ops->size++];
 }
 
 int environment_setenv(environment_t *env, const char *name, const char *value, int overwrite) {
@@ -99,39 +96,38 @@ int environment_setenv(environment_t *env, const char *name, const char *value, 
   }
 
   graph_builder_t *g = env->g;
+  allocator_t *alc = &g->alc;
+  errors_t *errors = &g->errors;
 
-  if (name == NULL) {
-    record_einval(g, __func__, "name is NULL");
-    return -1;
-  }
+  CHECK_IF_NULL(name, -1, errors);
+  CHECK_IF_NULL(value, -1, errors);
 
-  if (value == NULL) {
-    record_einval(g, __func__, "value is NULL");
-    return -1;
-  }
-
-  char *my_name = g_copy_str(g, name, __func__);
+  char *my_name = a_copy_str(alc, name, errors);
 
   if (my_name == NULL) {
     return -1;
   }
 
-  char *my_value = g_copy_str(g, value, __func__);
+  char *my_value = a_copy_str(alc, value, errors);
 
   if (my_value == NULL) {
-    g_free(g, my_name);
+    a_free(alc, my_name);
     return -1;
   }
 
-  struct un_setenv_op *op = emplace_un_setenv_op(env, __func__);
+  struct env_op *op = env_op_vec_emplace(&env->ops, alc, errors);
 
   if (op == NULL) {
-    g_free(g, my_name);
-    g_free(g, my_value);
+    a_free(alc, my_name);
+    a_free(alc, my_value);
     return -1;
   }
 
-  *op = (struct un_setenv_op){1, overwrite, my_name, my_value};
+  op->set = 1;
+  op->overwrite = overwrite;
+  op->name = my_name;
+  op->value = my_value;
+
   return 0;
 }
 
@@ -141,26 +137,28 @@ int environment_unsetenv(environment_t *env, const char *name) {
   }
 
   graph_builder_t *g = env->g;
+  allocator_t *alc = &g->alc;
+  errors_t *errors = &g->errors;
 
-  if (name == NULL) {
-    record_einval(g, __func__, "name is NULL");
-    return -1;
-  }
+  CHECK_IF_NULL(name, -1, errors);
 
-  char *my_name = g_copy_str(g, name, __func__);
+  char *my_name = a_copy_str(alc, name, errors);
 
   if (my_name == NULL) {
     return -1;
   }
 
-  struct un_setenv_op *op = emplace_un_setenv_op(env, __func__);
+  struct env_op *op = env_op_vec_emplace(&env->ops, alc, errors);
 
   if (op == NULL) {
-    g_free(g, my_name);
+    a_free(alc, my_name);
     return -1;
   }
 
-  *op = (struct un_setenv_op){0, 0, my_name, NULL};
+  op->overwrite = 0;
+  op->name = my_name;
+  op->value = NULL;
+
   return 0;
 }
 
@@ -171,6 +169,7 @@ int environment_setreuid(environment_t *env, uid_t ruid, uid_t euid) {
 
   env->ruid = ruid;
   env->euid = euid;
+
   return 0;
 }
 
@@ -181,5 +180,11 @@ int environment_setregid(environment_t *env, gid_t rgid, gid_t egid) {
 
   env->rgid = rgid;
   env->egid = egid;
+
   return 0;
+}
+
+static void destroy_env_op(struct env_op *op, allocator_t *alc) {
+  a_free(alc, op->name);
+  a_free(alc, op->value);
 }

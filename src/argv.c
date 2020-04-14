@@ -1,5 +1,5 @@
 #include "argv.h"
-#include "alloc.h"
+#include "allocator.h"
 #include "errors.h"
 #include "graph-builder.h"
 #include "graph.h"
@@ -14,7 +14,7 @@ struct argv_arg {
   } u;
 };
 
-static void destroy_arg(graph_builder_t *g, struct argv_arg *arg);
+static void destroy_arg(struct argv_arg *arg, allocator_t *alc);
 
 #define METHODS_ONLY
 #define NAME argv_vec
@@ -22,19 +22,22 @@ static void destroy_arg(graph_builder_t *g, struct argv_arg *arg);
 #define DESTRUCTOR destroy_arg
 #include "vec.h"
 
-static int push_str(argv_t *argv, const char *arg, const char *call);
-static int push_strs_v(argv_t *argv, va_list v, const char *call);
+static int push_str(argv_t *argv, const char *str, allocator_t *alc, errors_t *errors);
+static int push_strs_v(argv_t *argv, va_list v, allocator_t *alc, errors_t *errors);
 
 #define UNUSED_MESSAGE "argv has already been used and cannot be modified"
-#define UNUSED_CHECK(argv, ret, call)                                                              \
-  INVAL_CHECK((argv)->g, (argv)->used, UNUSED_MESSAGE, ret, call)
+
+#define CHECK_IF_USED(argv, ret, errors) CHECK_INVAL((argv)->used, UNUSED_MESSAGE, ret, errors)
 
 argv_t *create_argv(graph_builder_t *g) {
   if (g == NULL) {
     return NULL;
   }
 
-  argv_t *argv = g_alloc_argv(g, __func__);
+  allocator_t *alc = &g->alc;
+  errors_t *errors = &g->errors;
+
+  argv_t *argv = a_alloc_argv(alc, errors);
 
   if (argv == NULL) {
     return NULL;
@@ -52,7 +55,10 @@ argv_t *create_argv_v(graph_builder_t *g, ... /* const char *, ..., NULL */) {
     return NULL;
   }
 
-  argv_t *argv = g_alloc_argv(g, __func__);
+  allocator_t *alc = &g->alc;
+  errors_t *errors = &g->errors;
+
+  argv_t *argv = a_alloc_argv(alc, errors);
 
   if (argv == NULL) {
     return NULL;
@@ -64,26 +70,25 @@ argv_t *create_argv_v(graph_builder_t *g, ... /* const char *, ..., NULL */) {
 
   va_list v;
   va_start(v, g);
-  const int result = push_strs_v(argv, v, __func__);
-  va_end(v);
 
-  if (result < 0) {
-    destroy_argv(g, argv);
+  if (push_strs_v(argv, v, alc, errors) < 0) {
+    destroy_argv(argv, alc);
+    va_end(v);
     return NULL;
   }
 
+  va_end(v);
   return argv;
 }
 
-void initialize_argv(graph_builder_t *g, argv_t *argv) {
+void initialize_argv(argv_t *argv, graph_builder_t *g) {
   argv->g = g;
   initialize_argv_vec(&argv->args);
   argv->used = 0;
 }
 
-void destroy_argv(graph_builder_t *g, argv_t *argv) {
-  ASSERT(g == argv->g);
-  destroy_argv_vec(g, &argv->args);
+void destroy_argv(argv_t *argv, allocator_t *alc) {
+  destroy_argv_vec(&argv->args, alc);
 }
 
 int argv_push_str(argv_t *argv, const char *arg) {
@@ -91,9 +96,12 @@ int argv_push_str(argv_t *argv, const char *arg) {
     return -1;
   }
 
-  UNUSED_CHECK(argv, -1, __func__);
+  graph_builder_t *g = argv->g;
+  allocator_t *alc = &g->alc;
+  errors_t *errors = &g->errors;
 
-  return push_str(argv, arg, __func__);
+  CHECK_IF_USED(argv, -1, errors);
+  return push_str(argv, arg, alc, errors);
 }
 
 int argv_push_strs(argv_t *argv, char *const *const args, size_t n_args) {
@@ -101,31 +109,31 @@ int argv_push_strs(argv_t *argv, char *const *const args, size_t n_args) {
     return -1;
   }
 
-  UNUSED_CHECK(argv, -1, __func__);
-
   graph_builder_t *g = argv->g;
+  allocator_t *alc = &g->alc;
+  errors_t *errors = &g->errors;
 
   if (n_args > 0) {
-    NULL_CHECK(g, args, -1, __func__);
+    CHECK_IF_NULL(args, -1, errors);
 
     for (size_t i = 0; i < n_args; i++) {
-      NULL_CHECK(g, args[i], -1, __func__);
+      CHECK_IF_NULL(args[i], -1, errors);
     }
   }
 
-  if (argv_vec_reserve(g, &argv->args, n_args, __func__) < 0) {
+  if (argv_vec_reserve(&argv->args, n_args, alc, errors) < 0) {
     return -1;
   }
 
   for (size_t i = 0; i < n_args; i++) {
-    char *my_str = g_copy_str(g, args[i], __func__);
+    char *my_str = a_copy_str(alc, args[i], errors);
 
     if (my_str == NULL) {
-      argv_vec_pop_n(g, &argv->args, n_args - i);
+      argv_vec_pop_n(&argv->args, n_args - i, alc);
       return -1;
     }
 
-    struct argv_arg *arg = argv_vec_emplace(g, &argv->args, __func__);
+    struct argv_arg *arg = argv_vec_emplace(&argv->args, alc, errors);
     ASSERT(arg != NULL);
 
     arg->type = ARG_STR;
@@ -140,13 +148,22 @@ int argv_push_strs_v(argv_t *argv, ...) {
     return -1;
   }
 
-  UNUSED_CHECK(argv, -1, __func__);
+  graph_builder_t *g = argv->g;
+  allocator_t *alc = &g->alc;
+  errors_t *errors = &g->errors;
+
+  CHECK_IF_USED(argv, -1, errors);
 
   va_list v;
   va_start(v, argv);
-  const int result = push_strs_v(argv, v, __func__);
+
+  if (push_strs_v(argv, v, alc, errors) < 0) {
+    va_end(v);
+    return -1;
+  }
+
   va_end(v);
-  return result;
+  return 0;
 }
 
 int argv_push_input(argv_t *argv, stream_t in) {
@@ -154,17 +171,19 @@ int argv_push_input(argv_t *argv, stream_t in) {
     return -1;
   }
 
-  UNUSED_CHECK(argv, -1, __func__);
-
   graph_builder_t *g = argv->g;
+  allocator_t *alc = &g->alc;
+  errors_t *errors = &g->errors;
 
-  struct argv_arg *arg = argv_vec_emplace(g, &argv->args, __func__);
+  CHECK_IF_USED(argv, -1, errors);
+
+  struct argv_arg *arg = argv_vec_emplace(&argv->args, alc, errors);
 
   if (arg == NULL) {
     return -1;
   }
 
-  tap_t tap = tap_stream(g, &g->gr, in, __func__);
+  tap_t tap = tap_stream(&g->graph, in, alc, errors);
 
   if (tap == NIL_TAP) {
     argv_vec_unemplace(&argv->args);
@@ -184,17 +203,19 @@ stream_t argv_push_output(argv_t *argv) {
     return -1;
   }
 
-  UNUSED_CHECK(argv, -1, __func__);
-
   graph_builder_t *g = argv->g;
+  allocator_t *alc = &g->alc;
+  errors_t *errors = &g->errors;
 
-  struct argv_arg *arg = argv_vec_emplace(g, &argv->args, __func__);
+  CHECK_IF_USED(argv, -1, errors);
+
+  struct argv_arg *arg = argv_vec_emplace(&argv->args, alc, errors);
 
   if (arg == NULL) {
     return NIL_STREAM;
   }
 
-  const stream_t out = create_stream(g, &g->gr, __func__);
+  const stream_t out = create_stream(&g->graph, alc, errors);
 
   if (out == NIL_STREAM) {
     argv_vec_unemplace(&argv->args);
@@ -209,35 +230,21 @@ stream_t argv_push_output(argv_t *argv) {
   return out;
 }
 
-static int push_strs_v(argv_t *argv, va_list v, const char *call) {
-  for (;;) {
-    const char *arg = va_arg(v, const char *);
+static int push_str(argv_t *argv, const char *str, allocator_t *alc, errors_t *errors) {
+  ASSERT(argv != NULL);
 
-    if (arg == NULL) {
-      return 0;
-    }
+  CHECK_IF_NULL(str, -1, errors);
 
-    if (push_str(argv, arg, call) < 0) {
-      return -1;
-    }
-  }
-}
-
-static int push_str(argv_t *argv, const char *str, const char *call) {
-  graph_builder_t *g = argv->g;
-
-  NULL_CHECK(g, str, -1, call);
-
-  char *my_str = g_copy_str(g, str, call);
+  char *my_str = a_copy_str(alc, str, errors);
 
   if (my_str == NULL) {
     return -1;
   }
 
-  struct argv_arg *arg = argv_vec_emplace(g, &argv->args, call);
+  struct argv_arg *arg = argv_vec_emplace(&argv->args, alc, errors);
 
   if (arg == NULL) {
-    g_free(g, my_str);
+    a_free(alc, my_str);
     return -1;
   }
 
@@ -247,11 +254,25 @@ static int push_str(argv_t *argv, const char *str, const char *call) {
   return 0;
 }
 
-static void destroy_arg(graph_builder_t *g, struct argv_arg *arg) {
+static int push_strs_v(argv_t *argv, va_list v, allocator_t *alc, errors_t *errors) {
+  for (;;) {
+    const char *arg = va_arg(v, const char *);
+
+    if (arg == NULL) {
+      return 0;
+    }
+
+    if (push_str(argv, arg, alc, errors) < 0) {
+      return -1;
+    }
+  }
+}
+
+static void destroy_arg(struct argv_arg *arg, allocator_t *alc) {
   if (arg->type != ARG_STR) {
     ASSERT(arg->type == ARG_IN || arg->type == ARG_OUT);
     return;
   }
 
-  g_free(g, arg->u.str);
+  a_free(alc, arg->u.str);
 }
