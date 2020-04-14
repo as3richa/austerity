@@ -28,9 +28,7 @@ typedef struct austerity_error austerity_error_t;
 void austerity_graph_builder_abort_on_error(austerity_graph_builder_t *g);
 
 void austerity_graph_builder_on_error(austerity_graph_builder_t *g,
-                                      void (*callback)(void *,
-                                                       austerity_graph_builder_t *,
-                                                       const austerity_error_t *),
+                                      void (*callback)(void *, const austerity_error_t *),
                                       void *user);
 
 typedef uint_least32_t austerity_stream_t;

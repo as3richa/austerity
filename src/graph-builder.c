@@ -18,7 +18,7 @@ create_graph_builder_a(void *(*alloc)(void *, size_t), void (*free)(void *, void
 
   g->default_env = NULL;
   initialize_graph(&g->gr);
-  initialize_errors(&g->err);
+  initialize_errors(&g->errors);
   initialize_allocator(&g->a, alloc, free, user);
 
   return g;
@@ -31,11 +31,7 @@ void destroy_graph_builder(graph_builder_t *g) {
 }
 
 int set_default_environment(graph_builder_t *g, environment_t *env) {
-  if (env == NULL) {
-    record_einval(g, __func__, "env is NULL");
-    return -1;
-  }
-
+  NULL_CHECK(g, env, -1, __func__);
   g->default_env = env;
   return 0;
 }

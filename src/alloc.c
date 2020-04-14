@@ -5,7 +5,7 @@
 #define CHECK_AND_RETURN_PTR(g, ptr)                                                               \
   do {                                                                                             \
     if ((ptr) == NULL) {                                                                           \
-      record_alloc_failure((g), call);                                                             \
+      record_alloc_failure(&g->errors, call);                                                      \
       return NULL;                                                                                 \
     }                                                                                              \
     return (ptr);                                                                                  \
